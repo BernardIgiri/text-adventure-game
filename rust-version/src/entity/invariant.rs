@@ -13,13 +13,13 @@ pub enum EntityName {
 }
 
 impl TryInto<Identifier> for EntityName {
-    type Error = error::Game;
+    type Error = error::Application;
 
     fn try_into(self) -> Result<Identifier, Self::Error> {
         if let Self::Identifier(i) = &self {
             Ok(i.clone())
         } else {
-            Err(error::Game::IllegalConversion {
+            Err(error::IllegalConversion {
                 src: self.into(),
                 dest: "Identifier",
             })
@@ -28,13 +28,13 @@ impl TryInto<Identifier> for EntityName {
 }
 
 impl TryInto<Title> for EntityName {
-    type Error = error::Game;
+    type Error = error::Application;
 
     fn try_into(self) -> Result<Title, Self::Error> {
         if let Self::Title(i) = &self {
             Ok(i.clone())
         } else {
-            Err(error::Game::IllegalConversion {
+            Err(error::IllegalConversion {
                 src: self.into(),
                 dest: "Title",
             })
@@ -52,19 +52,19 @@ static TITLE_RX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Z]{1,1}[A-Z
 pub struct Identifier(String);
 
 impl Identifier {
-    pub fn parse(s: &str) -> Result<Self, error::Game> {
+    pub fn parse(s: &str) -> Result<Self, error::Application> {
         s.parse()
     }
 }
 
 impl FromStr for Identifier {
-    type Err = error::Game;
+    type Err = error::Application;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if IDENTIFIER_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Lower)))
         } else {
-            Err(error::Game::InvalidPropertyValue {
+            Err(error::InvalidPropertyValue {
                 value: s.into(),
                 field: "identifier",
             })
@@ -76,19 +76,19 @@ impl FromStr for Identifier {
 pub struct Title(String);
 
 impl Title {
-    pub fn parse(s: &str) -> Result<Self, error::Game> {
+    pub fn parse(s: &str) -> Result<Self, error::Application> {
         s.parse()
     }
 }
 
 impl FromStr for Title {
-    type Err = error::Game;
+    type Err = error::Application;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if TITLE_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Title)))
         } else {
-            Err(error::Game::InvalidPropertyValue {
+            Err(error::InvalidPropertyValue {
                 value: s.into(),
                 field: "title",
             })

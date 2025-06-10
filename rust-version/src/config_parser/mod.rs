@@ -17,7 +17,7 @@ pub use world::World;
 
 struct SectionRecordIter<'a>(SectionIter<'a>, &'a str);
 
-pub fn parse(ini: Ini) -> Result<World, error::Game> {
+pub fn parse(ini: Ini) -> Result<World, error::Application> {
     let mut world = WorldData::default();
     let mut staging = Staging::new();
     // Populate entity staging map with partially processed config data
@@ -42,15 +42,14 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
     // Finalize processing of entities with zero dependencies (Item)
     for record in SectionRecordIter(ini.iter(), EntitySection::Item.into()) {
         let record = record?;
-        let description =
-            record
-                .properties
-                .get("description")
-                .ok_or(error::Game::PropertyNotFound {
-                    entity: "Item",
-                    property: "description",
-                    id: record.qualified_name.into(),
-                })?;
+        let description = record
+            .properties
+            .get("description")
+            .ok_or(error::PropertyNotFound {
+                entity: "Item",
+                property: "description",
+                id: record.qualified_name.into(),
+            })?;
         let name = record.name.parse::<Identifier>()?;
         let item = Item::new(name.clone(), description.to_string());
         world.item.insert(name, item);
@@ -75,14 +74,14 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
             let incomplete = list_incomplete_entities(&world, &staging);
             dbg!(world);
             dbg!(staging);
-            return Err(error::Game::EntityReferencesNotFound(incomplete));
+            return Err(error::EntityReferencesNotFound(incomplete));
         }
     }
     Ok(World::new(dbg!(world)))
 }
 
 impl<'a> Iterator for SectionRecordIter<'a> {
-    type Item = Result<StagedEntity<'a>, error::Game>;
+    type Item = Result<StagedEntity<'a>, error::Application>;
 
     fn next(&mut self) -> Option<Self::Item> {
         for (input_opt, properties) in &mut self.0 {
@@ -105,24 +104,24 @@ impl<'a> Iterator for SectionRecordIter<'a> {
 fn get_record<'a>(
     input: &'a str,
     properties: &'a Properties,
-) -> Result<StagedEntity<'a>, error::Game> {
+) -> Result<StagedEntity<'a>, error::Application> {
     let mut section_parts = input.split(':');
     let section = section_parts
         .next()
-        .ok_or_else(|| error::Game::InvalidPropertyValue {
+        .ok_or_else(|| error::InvalidPropertyValue {
             value: input.into(),
             field: "Section Name",
         })?;
     let qualified_name = section_parts
         .next()
-        .ok_or_else(|| error::Game::InvalidPropertyValue {
+        .ok_or_else(|| error::InvalidPropertyValue {
             value: input.into(),
             field: "Qualified Entitity Name",
         })?;
     let mut entity_name_parts = qualified_name.split('|');
     let name = entity_name_parts
         .next()
-        .ok_or_else(|| error::Game::InvalidPropertyValue {
+        .ok_or_else(|| error::InvalidPropertyValue {
             value: input.into(),
             field: "Entity Name",
         })?;

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum Game {
+pub enum Application {
     #[error("Could not parse value `{value}` as `{field}`!")]
     InvalidPropertyValue { value: String, field: &'static str },
     #[error("Property `{property}` not found for `{entity}` with id `{id}`!")]
@@ -26,3 +26,5 @@ pub enum Game {
     #[error("Incomplete data for entity `{0}`")]
     EntityDataIncomplete(&'static str),
 }
+
+pub use Application::*;

@@ -15,10 +15,10 @@ struct Args {
     file: PathBuf,
 }
 
-fn main() -> Result<(), error::Game> {
+fn main() -> Result<(), error::Application> {
     let args = Args::parse();
-    let file = args.file.to_str().ok_or(error::Game::CouldNotLoadFile)?;
-    let ini = Ini::load_from_file(file).map_err(|_| error::Game::CouldNotLoadFile)?;
+    let file = args.file.to_str().ok_or(error::CouldNotLoadFile)?;
+    let ini = Ini::load_from_file(file).map_err(|_| error::CouldNotLoadFile)?;
     let world = config_parser::parse(ini)?;
     println!("{:#?}", world);
     Ok(())

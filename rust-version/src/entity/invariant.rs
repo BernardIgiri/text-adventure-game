@@ -64,7 +64,7 @@ impl FromStr for Identifier {
         if IDENTIFIER_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Lower)))
         } else {
-            Err(error::Game::InvalidPropValue {
+            Err(error::Game::InvalidPropertyValue {
                 value: s.into(),
                 field: "identifier",
             })
@@ -88,7 +88,7 @@ impl FromStr for Title {
         if TITLE_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Title)))
         } else {
-            Err(error::Game::InvalidPropValue {
+            Err(error::Game::InvalidPropertyValue {
                 value: s.into(),
                 field: "title",
             })

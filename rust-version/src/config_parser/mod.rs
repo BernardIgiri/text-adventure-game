@@ -42,10 +42,15 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
     // Finalize processing of entities with zero dependencies (Item)
     for record in SectionRecordIter(ini.iter(), EntitySection::Item.into()) {
         let record = record?;
-        let description = record
-            .properties
-            .get("description")
-            .ok_or(error::Game::PropertyNotFound("Item description"))?;
+        let description =
+            record
+                .properties
+                .get("description")
+                .ok_or(error::Game::PropertyNotFound {
+                    entity: "Item",
+                    property: "description",
+                    id: record.qualified_name.into(),
+                })?;
         let name = record.name.parse::<Identifier>()?;
         let item = Item::new(name.clone(), description.to_string());
         world.item.insert(name, item);
@@ -70,7 +75,7 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
             let incomplete = list_incomplete_entities(&world, &staging);
             dbg!(world);
             dbg!(staging);
-            return Err(error::Game::UnlinkedEntities(incomplete));
+            return Err(error::Game::EntityReferencesNotFound(incomplete));
         }
     }
     Ok(World::new(dbg!(world)))
@@ -104,14 +109,23 @@ fn get_record<'a>(
     let mut section_parts = input.split(':');
     let section = section_parts
         .next()
-        .ok_or(error::Game::PropertyNotFound("Section Name"))?;
-    let qualified_entity_name = section_parts
+        .ok_or_else(|| error::Game::InvalidPropertyValue {
+            value: input.into(),
+            field: "Section Name",
+        })?;
+    let qualified_name = section_parts
         .next()
-        .ok_or(error::Game::PropertyNotFound("Qualified Entity Name"))?;
-    let mut entity_name_parts = qualified_entity_name.split('|');
+        .ok_or_else(|| error::Game::InvalidPropertyValue {
+            value: input.into(),
+            field: "Qualified Entitity Name",
+        })?;
+    let mut entity_name_parts = qualified_name.split('|');
     let name = entity_name_parts
         .next()
-        .ok_or(error::Game::PropertyNotFound("Entity Name"))?;
+        .ok_or_else(|| error::Game::InvalidPropertyValue {
+            value: input.into(),
+            field: "Entity Name",
+        })?;
     let variant = entity_name_parts
         .next()
         .map(str::parse::<Identifier>)
@@ -121,5 +135,6 @@ fn get_record<'a>(
         name,
         variant,
         properties,
+        qualified_name,
     })
 }

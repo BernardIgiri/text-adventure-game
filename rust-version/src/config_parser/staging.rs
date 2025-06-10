@@ -1,8 +1,5 @@
 use ini::Properties;
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Write,
-};
+use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 
 use crate::entity::{EntityName, Identifier, Room, Title};
@@ -30,6 +27,7 @@ pub struct StagedEntity<'a> {
     pub name: &'a str,
     pub variant: Option<Identifier>,
     pub properties: &'a Properties,
+    pub qualified_name: &'a str,
 }
 
 pub fn list_incomplete_entities(world: &WorldData, staging: &Staging) -> Vec<String> {
@@ -68,9 +66,7 @@ pub fn list_incomplete_entities(world: &WorldData, staging: &Staging) -> Vec<Str
                         if world.dialogue.contains_key(&name) {
                             None
                         } else {
-                            let qualified_name =
-                                qualify_entity_name(name.as_ref(), &staged.variant);
-                            Some(format!("Dialogue:{}", qualified_name))
+                            Some(format!("Room:{}", staged.qualified_name))
                         }
                     }));
                 }
@@ -115,9 +111,7 @@ pub fn list_incomplete_entities(world: &WorldData, staging: &Staging) -> Vec<Str
                         if world.room.contains_key(&name) {
                             None
                         } else {
-                            let qualified_name =
-                                qualify_entity_name(name.as_ref(), &staged.variant);
-                            Some(format!("Room:{}", qualified_name))
+                            Some(format!("Room:{}", staged.qualified_name))
                         }
                     }));
                 }
@@ -133,13 +127,4 @@ pub fn get_room_variant<'a>(
     variant: &'a Option<Identifier>,
 ) -> Option<&'a Room> {
     world.room.get(room_name).and_then(|r| r.get(variant))
-}
-
-pub fn qualify_entity_name(name: &str, variant: &Option<Identifier>) -> String {
-    let mut qualified = String::new();
-    write!(qualified, "{}", name).unwrap();
-    if let Some(v) = variant {
-        write!(qualified, "|{}", v).unwrap();
-    }
-    qualified
 }

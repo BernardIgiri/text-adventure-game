@@ -1,9 +1,19 @@
 mod action;
+mod character;
+mod dialogue;
+mod requirement;
+mod response;
+mod room;
 mod staging;
 mod world;
 
 use action::list_actions;
+use character::list_characters;
+use dialogue::list_dialogues;
 use ini::{Ini, Properties, SectionIter};
+use requirement::list_requirements;
+use response::list_responses;
+use room::list_rooms;
 use staging::{list_incomplete_entities, EntitySection, StagedEntity, Staging};
 use strum::IntoEnumIterator;
 use world::WorldData;
@@ -67,7 +77,39 @@ pub fn parse(ini: Ini) -> Result<World, error::Application> {
                     unpaired_entities -= list.len();
                     world.action.extend(list);
                 }
-                _ => continue, //todo!(),
+                E::Character => {
+                    let list = list_characters(&staging, &world)?;
+                    unpaired_entities -= list.len();
+                    world.character.extend(list);
+                }
+                E::Dialogue => {
+                    let list = list_dialogues(&staging, &world)?;
+                    unpaired_entities -= list.len();
+                    for (name, variant, dialogue) in list {
+                        world
+                            .dialogue
+                            .entry(name)
+                            .or_default()
+                            .insert(variant, dialogue);
+                    }
+                }
+                E::Requirement => {
+                    let list = list_requirements(&staging, &world)?;
+                    unpaired_entities -= list.len();
+                    world.requirement.extend(list);
+                }
+                E::Response => {
+                    let list = list_responses(&staging, &world)?;
+                    unpaired_entities -= list.len();
+                    world.response.extend(list);
+                }
+                E::Room => {
+                    let list = list_rooms(&staging, &world)?;
+                    unpaired_entities -= list.len();
+                    for (name, variant, room) in list {
+                        world.room.entry(name).or_default().insert(variant, room);
+                    }
+                }
             }
         }
         if previous_count == unpaired_entities {

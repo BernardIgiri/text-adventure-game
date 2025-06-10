@@ -44,8 +44,6 @@ define_action!(TakeItem {
     items: Vec<Item>,
 });
 
-// TODO: Implement later
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     ChangeRoom(ChangeRoom),

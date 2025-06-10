@@ -1,11 +1,11 @@
+use ini::Properties;
+
 use crate::{
     config_parser::{
-        staging::{get_room_variant, EntitySection, StagedEntity, Staging},
+        staging::{get_room_variant, EntitySection, RequireProperty, StagedEntity, Staging},
         world::WorldData,
     },
-    entity::{
-        Action, ChangeRoom, EntityName, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title,
-    },
+    entity::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
     error,
 };
 
@@ -69,7 +69,7 @@ fn next_change_room_action(
         };
         (room_name, variant)
     };
-    let description = description_from_staged(staged)?;
+    let description = staged.properties.require("description", staged)?;
     let room = match get_room_variant(world, &room_name, &variant) {
         Some(r) => r,
         None => return Ok(None),
@@ -90,7 +90,7 @@ fn next_give_item_action(
     world: &WorldData,
 ) -> Result<Option<GiveItem>, error::Application> {
     let items = items_from_staged(staged, world)?;
-    let description = description_from_staged(staged)?;
+    let description = staged.properties.require("description", staged)?;
     Ok(Some(
         GiveItem::builder()
             .name(staged.name.parse()?)
@@ -100,16 +100,27 @@ fn next_give_item_action(
     ))
 }
 
-// TODO: Implement later
-#[allow(unused_variables)]
 fn next_replace_item_action(
     staged: &StagedEntity,
     world: &WorldData,
 ) -> Result<Option<ReplaceItem>, error::Application> {
-    let description = description_from_staged(staged)?;
-    // let original = staged.properties.get("original")
-    //     .ok_or(error)
-    todo!()
+    let description = staged.properties.require("description", staged)?;
+    let original = staged
+        .properties
+        .require("original", staged)
+        .and_then(|item_name| item_from_world(item_name, world))?;
+    let replacement = staged
+        .properties
+        .require("replacement", staged)
+        .and_then(|item_name| item_from_world(item_name, world))?;
+    Ok(Some(
+        ReplaceItem::builder()
+            .name(staged.name.parse()?)
+            .description(description.into())
+            .original(original)
+            .replacement(replacement)
+            .build(),
+    ))
 }
 
 fn next_take_item_action(
@@ -117,7 +128,7 @@ fn next_take_item_action(
     world: &WorldData,
 ) -> Result<Option<TakeItem>, error::Application> {
     let items = items_from_staged(staged, world)?;
-    let description = description_from_staged(staged)?;
+    let description = staged.properties.require("description", staged)?;
     let required = required_item_from_staged(staged, world)?;
     Ok(Some(
         TakeItem::builder()
@@ -129,31 +140,13 @@ fn next_take_item_action(
     ))
 }
 
-fn description_from_staged<'a>(
-    staged: &'a StagedEntity<'a>,
-) -> Result<&'a str, error::Application> {
-    staged
-        .properties
-        .get("description")
-        .ok_or_else(|| error::PropertyNotFound {
-            entity: "Action",
-            property: "description",
-            id: staged.qualified_name.into(),
-        })
-}
-
 fn items_from_staged<'a>(
     staged: &'a StagedEntity<'a>,
     world: &'a WorldData,
 ) -> Result<Vec<Item>, error::Application> {
     staged
         .properties
-        .get("items")
-        .ok_or(error::PropertyNotFound {
-            entity: "Action",
-            property: "items",
-            id: staged.qualified_name.into(),
-        })?
+        .require("items", staged)?
         .split(",")
         .map(str::trim)
         .map(|item_name| item_from_world(item_name, world))
@@ -180,4 +173,18 @@ fn item_from_world(item_name: &str, world: &WorldData) -> Result<Item, error::Ap
             id: item_name.into(),
         })?
         .clone())
+}
+
+impl RequireProperty for Properties {
+    fn require(
+        &self,
+        prop: &'static str,
+        staged: &StagedEntity,
+    ) -> Result<&str, error::Application> {
+        self.get(prop).ok_or_else(|| error::PropertyNotFound {
+            entity: "Action",
+            property: prop,
+            id: staged.qualified_name.into(),
+        })
+    }
 }

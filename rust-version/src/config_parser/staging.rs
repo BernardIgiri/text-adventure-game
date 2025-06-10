@@ -2,7 +2,10 @@ use ini::Properties;
 use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 
-use crate::entity::{EntityName, Identifier, Room, Title};
+use crate::{
+    entity::{EntityName, Identifier, Room, Title},
+    error,
+};
 
 use super::world::WorldData;
 
@@ -21,6 +24,8 @@ pub enum EntitySection {
     Room,
 }
 
+// TODO: Implement this
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct StagedEntity<'a> {
     pub section: &'a str,
@@ -127,4 +132,12 @@ pub fn get_room_variant<'a>(
     variant: &'a Option<Identifier>,
 ) -> Option<&'a Room> {
     world.room.get(room_name).and_then(|r| r.get(variant))
+}
+
+pub trait RequireProperty {
+    fn require(
+        &self,
+        prop: &'static str,
+        staged: &StagedEntity,
+    ) -> Result<&str, error::Application>;
 }

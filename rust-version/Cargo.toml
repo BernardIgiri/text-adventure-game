@@ -1,0 +1,16 @@
+[package]
+name = "rust-version"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bon = "3.6.3"
+clap = { version = "4.5.39", features = ["derive"] }
+convert_case = "0.8.0"
+derive-getters = "0.5.0"
+derive-new = "0.7.0"
+rust-ini = "0.21"
+regex = "1.11.1"
+thiserror = "2.0.12"
+strum = { version = "0.27.1", features = ["derive"] }
+derive_more = { version = "2.0.1", features = ["full"] }

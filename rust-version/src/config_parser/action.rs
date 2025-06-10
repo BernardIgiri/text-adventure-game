@@ -4,8 +4,7 @@ use crate::{
         world::WorldData,
     },
     entity::{
-        action::{Action, ChangeRoom, GiveItem},
-        invariant::{EntityName, Identifier, Title},
+        Action, ChangeRoom, EntityName, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title,
     },
     error,
 };
@@ -14,37 +13,46 @@ pub fn list_actions(
     staging: &Staging,
     world: &WorldData,
 ) -> Result<Vec<(Identifier, Action)>, error::Game> {
-    staging
+    Ok(staging
         .get(&EntitySection::Action)
         .into_iter()
         .flat_map(|map| map.values())
-        .filter_map(|staged| {
-            staged
-                .properties
-                .get("change_room")
-                .map(|val| (staged, val))
+        .map(|staged| {
+            if staged.properties.contains_key("change_room") {
+                next_change_room_action(staged, world)
+                    .map(|opt| opt.map(|a| (a.name().clone(), Action::ChangeRoom(a))))
+            } else if staged.properties.contains_key("replace_item") {
+                next_replace_item_action(staged, world)
+                    .map(|opt| opt.map(|a| (a.name().clone(), Action::ReplaceItem(a))))
+            } else if staged.properties.contains_key("give_item") {
+                next_give_item_action(staged, world)
+                    .map(|opt| opt.map(|a| (a.name().clone(), Action::GiveItem(a))))
+            } else if staged.properties.contains_key("take_item") {
+                next_take_item_action(staged, world)
+                    .map(|opt| opt.map(|a| (a.name().clone(), Action::TakeItem(a))))
+            } else {
+                Err(error::Game::IncompleteEntity("Action"))
+            }
         })
-        .map(|(staged, val)| {
-            next_change_room_action(staged, world, staging, val)
-                .map(|opt| opt.map(|a| (a.name().clone(), Action::ChangeRoom(a))))
-        })
-        .collect::<Result<Option<Vec<_>>, _>>()
-        .map(|opt| opt.unwrap_or_default())
+        .collect::<Result<Vec<Option<(Identifier, Action)>>, error::Game>>()?
+        .into_iter()
+        .flatten()
+        .collect())
 }
 
 fn next_change_room_action(
     staged: &StagedEntity,
     world: &WorldData,
-    staging: &Staging,
-    change_room: &str,
 ) -> Result<Option<ChangeRoom>, error::Game> {
-    use EntityName as N;
-    use EntitySection as E;
     let (room_name, variant) = {
+        let change_room = staged
+            .properties
+            .get("change_room")
+            .ok_or(error::Game::PropertyNotFound("Change Room Value"))?;
         let mut parts = change_room.split("->");
         let room_name = parts
             .next()
-            .ok_or(error::Game::MissingExpectedValue("Change Room Action Room"))?
+            .ok_or(error::Game::PropertyNotFound("Change Room Action Room"))?
             .parse::<Title>()?;
         let variant = match parts.next() {
             Some(v) => Some(v.parse::<Identifier>()?),
@@ -52,40 +60,12 @@ fn next_change_room_action(
         };
         (room_name, variant)
     };
-    let description =
-        staged
-            .properties
-            .get("description")
-            .ok_or(error::Game::MissingExpectedValue(
-                "Change Action Description",
-            ))?;
-    if !staging
-        .get(&E::Room)
-        .ok_or(error::Game::NoDataForEntityType("Room"))?
-        .contains_key(&N::Title(room_name.clone()))
-    {
-        return Err(error::Game::MissingEntity {
-            etype: E::Room.into(),
-            id: change_room.to_string(),
-        });
-    }
+    let description = description_from_staged(staged)?;
     let room = match get_room_variant(world, &room_name, &variant) {
         Some(r) => r,
         None => return Ok(None),
     };
-    let required = match staged.properties.get("required") {
-        Some(item_name) => Some(
-            world
-                .item
-                .get(&item_name.parse()?)
-                .ok_or_else(|| error::Game::MissingEntity {
-                    etype: "Item",
-                    id: item_name.into(),
-                })?
-                .clone(),
-        ),
-        None => None,
-    };
+    let required = required_item_from_staged(staged, world)?;
     Ok(Some(
         ChangeRoom::builder()
             .name(staged.name.parse()?)
@@ -99,8 +79,86 @@ fn next_change_room_action(
 fn next_give_item_action(
     staged: &StagedEntity,
     world: &WorldData,
-    staging: &Staging,
-    change_room: &str,
-) -> Result<GiveItem, error::Game> {
+) -> Result<Option<GiveItem>, error::Game> {
+    let items = items_from_staged(staged, world)?;
+    let description = description_from_staged(staged)?;
+    Ok(Some(
+        GiveItem::builder()
+            .name(staged.name.parse()?)
+            .description(description.into())
+            .items(items)
+            .build(),
+    ))
+}
+
+// TODO: Implement later
+#[allow(unused_variables)]
+fn next_replace_item_action(
+    staged: &StagedEntity,
+    world: &WorldData,
+) -> Result<Option<ReplaceItem>, error::Game> {
+    let description = description_from_staged(staged)?;
+    // let original = staged.properties.get("original")
+    //     .ok_or(error)
     todo!()
+}
+
+fn next_take_item_action(
+    staged: &StagedEntity,
+    world: &WorldData,
+) -> Result<Option<TakeItem>, error::Game> {
+    let items = items_from_staged(staged, world)?;
+    let description = description_from_staged(staged)?;
+    let required = required_item_from_staged(staged, world)?;
+    Ok(Some(
+        TakeItem::builder()
+            .name(staged.name.parse()?)
+            .description(description.into())
+            .items(items)
+            .maybe_required(required)
+            .build(),
+    ))
+}
+
+fn description_from_staged<'a>(staged: &'a StagedEntity<'a>) -> Result<&'a str, error::Game> {
+    staged
+        .properties
+        .get("description")
+        .ok_or(error::Game::PropertyNotFound("Change Action Description"))
+}
+
+fn items_from_staged<'a>(
+    staged: &'a StagedEntity<'a>,
+    world: &'a WorldData,
+) -> Result<Vec<Item>, error::Game> {
+    staged
+        .properties
+        .get("items")
+        .ok_or(error::Game::PropertyNotFound("items"))?
+        .split(",")
+        .map(str::trim)
+        .map(|item_name| item_from_world(item_name, world))
+        .collect()
+}
+
+fn required_item_from_staged<'a>(
+    staged: &'a StagedEntity<'a>,
+    world: &'a WorldData,
+) -> Result<Option<Item>, error::Game> {
+    let required = staged.properties.get("required").filter(|s| !s.is_empty());
+    match required {
+        Some(item_name) => Ok(Some(item_from_world(item_name, world)?)),
+        None => Ok(None),
+    }
+}
+
+fn item_from_world(item_name: &str, world: &WorldData) -> Result<Item, error::Game> {
+    Ok(world
+        .item
+        .get(&item_name.parse()?)
+        .ok_or_else(|| error::Game::MissingEntity {
+            etype: "Item",
+            id: item_name.into(),
+        })?
+        .clone())
 }

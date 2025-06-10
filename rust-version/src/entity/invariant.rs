@@ -42,7 +42,10 @@ impl TryInto<Title> for EntityName {
     }
 }
 
+// Valid RX will not panic
+#[allow(clippy::unwrap_used)]
 static IDENTIFIER_RX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-z_]+$").unwrap());
+#[allow(clippy::unwrap_used)]
 static TITLE_RX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Z]{1,1}[A-Za-z]+$").unwrap());
 
 #[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash)]
@@ -61,7 +64,7 @@ impl FromStr for Identifier {
         if IDENTIFIER_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Lower)))
         } else {
-            Err(error::Game::CouldNotParse {
+            Err(error::Game::InvalidPropValue {
                 value: s.into(),
                 field: "identifier",
             })
@@ -85,7 +88,7 @@ impl FromStr for Title {
         if TITLE_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Title)))
         } else {
-            Err(error::Game::CouldNotParse {
+            Err(error::Game::InvalidPropValue {
                 value: s.into(),
                 field: "title",
             })

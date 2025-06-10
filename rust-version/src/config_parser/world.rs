@@ -3,11 +3,7 @@ use std::collections::HashMap;
 use derive_new::new;
 
 use crate::entity::{
-    action::Action,
-    character::{Character, Dialogue, Response},
-    invariant::{Identifier, Title},
-    requirement::Requirement,
-    room::{Item, Room},
+    Action, Character, Dialogue, Identifier, Item, Requirement, Response, Room, Title,
 };
 
 pub type ActionMap = HashMap<Identifier, Action>;
@@ -29,5 +25,7 @@ pub struct WorldData {
     pub room: RoomMap,
 }
 
+// TODO: Implement later
+#[allow(dead_code)]
 #[derive(Debug, new)]
 pub struct World(WorldData);

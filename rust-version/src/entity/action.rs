@@ -12,6 +12,8 @@ macro_rules! define_action {
             $($field:ident : $type:ty),* $(,)?
         }
     ) => {
+        // TODO: Implement later
+        #[allow(dead_code)]
         #[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
         pub struct $name {
             name: Identifier,
@@ -42,6 +44,8 @@ define_action!(TakeItem {
     items: Vec<Item>,
 });
 
+// TODO: Implement later
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     ChangeRoom(ChangeRoom),

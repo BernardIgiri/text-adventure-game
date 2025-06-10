@@ -1,3 +1,6 @@
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+#![warn(clippy::all, clippy::nursery)]
+
 mod config_parser;
 mod entity;
 mod error;
@@ -15,7 +18,7 @@ struct Args {
 fn main() -> Result<(), error::Game> {
     let args = Args::parse();
     let file = args.file.to_str().ok_or(error::Game::CouldNotLoadFile)?;
-    let ini = Ini::load_from_file(file).unwrap();
+    let ini = Ini::load_from_file(file).map_err(|_| error::Game::CouldNotLoadFile)?;
     let world = config_parser::parse(ini)?;
     println!("{:#?}", world);
     Ok(())

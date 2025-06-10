@@ -5,10 +5,7 @@ use std::{
 };
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 
-use crate::entity::{
-    invariant::{EntityName, Identifier, Title},
-    room::Room,
-};
+use crate::entity::{EntityName, Identifier, Room, Title};
 
 use super::world::WorldData;
 

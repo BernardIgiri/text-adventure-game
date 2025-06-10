@@ -9,22 +9,20 @@ use strum::IntoEnumIterator;
 use world::WorldData;
 
 use crate::{
-    entity::{
-        invariant::{EntityName, Identifier},
-        room::Item,
-    },
+    entity::{EntityName, Identifier, Item},
     error,
 };
 
 pub use world::World;
 
-struct RecordBySection<'a>(SectionIter<'a>, &'a str);
+struct SectionRecordIter<'a>(SectionIter<'a>, &'a str);
 
 pub fn parse(ini: Ini) -> Result<World, error::Game> {
     let mut world = WorldData::default();
     let mut staging = Staging::new();
+    // Populate entity staging map with partially processed config data
     for section in EntitySection::iter() {
-        for record in RecordBySection(ini.iter(), section.into()) {
+        for record in SectionRecordIter(ini.iter(), section.into()) {
             use EntitySection::*;
             let record = record?;
             match section {
@@ -41,16 +39,18 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
         }
     }
     let staging = staging;
-    for record in RecordBySection(ini.iter(), EntitySection::Item.into()) {
+    // Finalize processing of entities with zero dependencies (Item)
+    for record in SectionRecordIter(ini.iter(), EntitySection::Item.into()) {
         let record = record?;
         let description = record
             .properties
             .get("description")
-            .ok_or(error::Game::MissingExpectedValue("Item description"))?;
+            .ok_or(error::Game::PropertyNotFound("Item description"))?;
         let name = record.name.parse::<Identifier>()?;
         let item = Item::new(name.clone(), description.to_string());
         world.item.insert(name, item);
     }
+    // Pair up associated entities
     let mut unpaired_entities: usize = staging.values().map(|inner| inner.len()).sum();
     while unpaired_entities > 0 {
         let previous_count = unpaired_entities;
@@ -70,13 +70,13 @@ pub fn parse(ini: Ini) -> Result<World, error::Game> {
             let incomplete = list_incomplete_entities(&world, &staging);
             dbg!(world);
             dbg!(staging);
-            return Err(error::Game::IncompleteEntities(incomplete));
+            return Err(error::Game::UnlinkedEntities(incomplete));
         }
     }
     Ok(World::new(dbg!(world)))
 }
 
-impl<'a> Iterator for RecordBySection<'a> {
+impl<'a> Iterator for SectionRecordIter<'a> {
     type Item = Result<StagedEntity<'a>, error::Game>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -104,14 +104,14 @@ fn get_record<'a>(
     let mut section_parts = input.split(':');
     let section = section_parts
         .next()
-        .ok_or(error::Game::MissingExpectedValue("Section Name"))?;
+        .ok_or(error::Game::PropertyNotFound("Section Name"))?;
     let qualified_entity_name = section_parts
         .next()
-        .ok_or(error::Game::MissingExpectedValue("Qualified Entity Name"))?;
+        .ok_or(error::Game::PropertyNotFound("Qualified Entity Name"))?;
     let mut entity_name_parts = qualified_entity_name.split('|');
     let name = entity_name_parts
         .next()
-        .ok_or(error::Game::MissingExpectedValue("Entity Name"))?;
+        .ok_or(error::Game::PropertyNotFound("Entity Name"))?;
     let variant = entity_name_parts
         .next()
         .map(str::parse::<Identifier>)

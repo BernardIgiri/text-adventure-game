@@ -3,11 +3,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Game {
     #[error("Could not parse value `{value}` as `{field}`!")]
-    CouldNotParse { value: String, field: &'static str },
+    InvalidPropValue { value: String, field: &'static str },
     #[error("Missing expected value for `{0}`!")]
-    MissingExpectedValue(&'static str),
+    PropertyNotFound(&'static str),
     #[error("No `{0}` data found!")]
-    NoDataForEntityType(&'static str),
+    EntitySectionNotFound(&'static str),
     #[error("Missing entity of type `{etype}` with id `{id}`!")]
     MissingEntity { etype: &'static str, id: String },
     #[error("Failed to load file!")]
@@ -17,6 +17,8 @@ pub enum Game {
         src: &'static str,
         dest: &'static str,
     },
-    #[error("Incomplete entities found: `{0:?}`")]
-    IncompleteEntities(Vec<String>),
+    #[error("Could not link entities due to missing/incorrect names/ids: `{0:?}`")]
+    UnlinkedEntities(Vec<String>),
+    #[error("Incomplete entity `{0}`")]
+    IncompleteEntity(&'static str),
 }

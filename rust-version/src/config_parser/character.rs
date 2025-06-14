@@ -5,7 +5,7 @@ use ini::SectionIter;
 use crate::{error, world::Character};
 
 use super::{
-    section_iter::{EntitySection, RequireProperty, SectionRecordIter},
+    iter::{EntitySection, RequireProperty, SectionRecordIter},
     types::CharacterMap,
 };
 

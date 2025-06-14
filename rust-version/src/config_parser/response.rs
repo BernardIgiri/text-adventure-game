@@ -4,8 +4,8 @@ use ini::SectionIter;
 
 use crate::{
     config_parser::{
+        iter::{EntitySection, RequireProperty, SectionRecordIter},
         requirement::parse_requirements,
-        section_iter::{EntitySection, RequireProperty, SectionRecordIter},
     },
     error,
     world::{Identifier, Response},

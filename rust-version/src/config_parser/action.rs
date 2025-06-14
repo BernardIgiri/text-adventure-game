@@ -4,7 +4,7 @@ use ini::SectionIter;
 
 use crate::{
     config_parser::{
-        section_iter::{EntitySection, SectionRecordIter},
+        iter::{EntitySection, SectionRecordIter},
         types::RoomVariant,
     },
     error,
@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    section_iter::{Record, RequireProperty},
+    iter::{Record, RequireProperty},
     types::{ActionMap, ItemMap, RoomMap},
 };
 
@@ -59,7 +59,7 @@ fn next_change_room_action(
                     property: "change_room",
                     id: record.qualified_name.into(),
                 })?;
-        let mut parts = change_room.split("->");
+        let mut parts = change_room.splitn(2, "->");
         let room_name = parts
             .next()
             .ok_or_else(|| error::PropertyNotFound {
@@ -67,9 +67,10 @@ fn next_change_room_action(
                 property: "change_room:<name>",
                 id: record.qualified_name.into(),
             })?
+            .trim()
             .parse::<Title>()?;
         let variant = match parts.next() {
-            Some(v) => Some(v.parse::<Identifier>()?),
+            Some(v) => Some(v.trim().parse::<Identifier>()?),
             None => None,
         };
         (room_name, variant)
@@ -95,7 +96,7 @@ fn next_change_room_action(
 }
 
 fn next_give_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
-    let items = items_from_record(record, item_map)?;
+    let items = items_from_record(record, "give_item", item_map)?;
     let description = record.properties.require("description", record)?;
     let name = record.name.parse::<Identifier>()?;
     Ok(Some((
@@ -135,7 +136,7 @@ fn next_replace_item_action(record: &Record, item_map: &ItemMap) -> ActionResult
 }
 
 fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
-    let items = items_from_record(record, item_map)?;
+    let items = items_from_record(record, "take_item", item_map)?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;
     let name = record.name.parse::<Identifier>()?;
@@ -154,11 +155,12 @@ fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
 
 fn items_from_record<'a>(
     record: &'a Record<'a>,
+    prop: &'static str,
     item_map: &'a ItemMap,
 ) -> Result<Vec<Rc<Item>>, error::Application> {
     record
         .properties
-        .require("items", record)?
+        .require(prop, record)?
         .split(',')
         .map(str::trim)
         .map(|item_name| require_item_from_map(item_name, item_map))

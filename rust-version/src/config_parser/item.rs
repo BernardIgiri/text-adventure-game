@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    section_iter::{EntitySection, SectionRecordIter},
+    iter::{EntitySection, SectionRecordIter},
     types::ItemMap,
 };
 

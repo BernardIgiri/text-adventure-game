@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
+    iter::{EntitySection, ListProperty, RequireProperty, SectionRecordIter},
     requirement::parse_requirements,
-    section_iter::{EntitySection, RequireProperty, SectionRecordIter},
     types::{DialogueMap, ItemMap, ResponseMap, RoomMap},
 };
 
@@ -25,10 +25,7 @@ pub fn parse_dialogues(
         let text = record.properties.require("text", &record)?;
         let responses = record
             .properties
-            .get("response")
-            .unwrap_or_default()
-            .split(',')
-            .map(str::trim)
+            .get_list("response")
             .map(|s| {
                 Ok(response_map
                     .get(&s.parse()?)

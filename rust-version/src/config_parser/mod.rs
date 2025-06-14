@@ -2,10 +2,10 @@ mod action;
 mod character;
 mod dialogue;
 mod item;
+mod iter;
 mod requirement;
 mod response;
 mod room;
-mod section_iter;
 mod types;
 
 use action::parse_actions;
@@ -21,7 +21,9 @@ use crate::{error, world::World};
 pub fn parse(ini: Ini) -> Result<World, error::Application> {
     let characters = parse_characters(ini.iter())?;
     let items = parse_items(ini.iter())?;
+    dbg!(3);
     let rooms = parse_rooms(ini.iter(), &characters, &items)?;
+    dbg!(4);
     let actions = parse_actions(ini.iter(), &rooms, &items)?;
     let responses = parse_responses(ini.iter(), &actions, &items, &rooms)?;
     let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms)?;

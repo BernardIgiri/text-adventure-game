@@ -2,7 +2,10 @@ use ini::{Properties, SectionIter};
 use std::str::FromStr;
 use strum::{EnumIter, EnumString, IntoStaticStr};
 
-use crate::{error, world::Identifier};
+use crate::{
+    error,
+    world::{Identifier, Title},
+};
 
 #[derive(IntoStaticStr, EnumString, EnumIter, Hash, Debug, PartialEq, Eq, Clone, Copy)]
 #[strum(serialize_all = "PascalCase")]
@@ -13,6 +16,31 @@ pub enum EntitySection {
     Item,
     Response,
     Room,
+}
+
+pub fn title_variant_from_qualified(
+    s: &str,
+) -> Result<(Title, Option<Identifier>), error::Application> {
+    let (name, variant) = unparsed_variant_from_qualified(s)?;
+    Ok((name.parse::<Title>()?, variant))
+}
+
+pub fn unparsed_variant_from_qualified(
+    s: &str,
+) -> Result<(&str, Option<Identifier>), error::Application> {
+    let mut parts = s.splitn(2, '|');
+    let name = parts
+        .next()
+        .ok_or_else(|| error::InvalidPropertyValue {
+            value: s.into(),
+            field: "qualified name",
+        })?
+        .trim();
+    let variant = match parts.next() {
+        Some(v) => Some(v.trim().parse::<Identifier>()?),
+        None => None,
+    };
+    Ok((name, variant))
 }
 
 #[derive(Debug)]
@@ -27,8 +55,8 @@ pub struct Record<'a> {
 pub struct SectionRecordIter<'a>(SectionIter<'a>, &'a str);
 
 impl<'a> SectionRecordIter<'a> {
-    pub const fn new(section_iter: SectionIter<'a>, section: &'a str) -> Self {
-        Self(section_iter, section)
+    pub const fn new(iter: SectionIter<'a>, section: &'a str) -> Self {
+        Self(iter, section)
     }
 }
 
@@ -57,30 +85,22 @@ fn get_record<'a>(
     input: &'a str,
     properties: &'a Properties,
 ) -> Result<Record<'a>, error::Application> {
-    let mut section_parts = input.split(':');
+    let mut section_parts = input.splitn(2, ':');
     let section = section_parts
         .next()
         .ok_or_else(|| error::InvalidPropertyValue {
             value: input.into(),
             field: "Section Name",
-        })?;
+        })?
+        .trim();
     let qualified_name = section_parts
         .next()
         .ok_or_else(|| error::InvalidPropertyValue {
             value: input.into(),
             field: "Qualified Entitity Name",
-        })?;
-    let mut entity_name_parts = qualified_name.split('|');
-    let name = entity_name_parts
-        .next()
-        .ok_or_else(|| error::InvalidPropertyValue {
-            value: input.into(),
-            field: "Entity Name",
-        })?;
-    let variant = entity_name_parts
-        .next()
-        .map(str::parse::<Identifier>)
-        .transpose()?;
+        })?
+        .trim();
+    let (name, variant) = unparsed_variant_from_qualified(qualified_name)?;
     Ok(Record {
         section,
         name,
@@ -103,5 +123,19 @@ impl RequireProperty for Properties {
             property: prop,
             id: record.qualified_name.into(),
         })
+    }
+}
+
+pub trait ListProperty {
+    fn get_list(&self, prop: &'static str) -> impl Iterator<Item = &str>;
+}
+
+impl ListProperty for Properties {
+    fn get_list(&self, prop: &'static str) -> impl Iterator<Item = &str> {
+        self.get(prop)
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
     }
 }

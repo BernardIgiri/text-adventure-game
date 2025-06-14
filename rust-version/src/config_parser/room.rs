@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    section_iter::{EntitySection, RequireProperty, SectionRecordIter},
+    iter::{EntitySection, ListProperty, RequireProperty, SectionRecordIter},
     types::{CharacterMap, ItemMap, RoomMap},
 };
 
@@ -23,10 +23,7 @@ pub fn parse_rooms<'a>(
         let description = record.properties.require("description", &record)?;
         let exits = record
             .properties
-            .get("exits")
-            .unwrap_or_default()
-            .split(',')
-            .map(str::trim)
+            .get_list("exits")
             .map(|exit| {
                 let mut parts = exit.split(":");
                 let direction = parts
@@ -36,6 +33,7 @@ pub fn parse_rooms<'a>(
                         property: "exit:<direction>",
                         id: record.qualified_name.into(),
                     })?
+                    .trim()
                     .parse::<Identifier>()?;
                 let room = parts
                     .next()
@@ -44,16 +42,14 @@ pub fn parse_rooms<'a>(
                         property: "exit=direction:<room>",
                         id: record.qualified_name.into(),
                     })?
+                    .trim()
                     .parse::<Title>()?;
                 Ok((direction, room))
             })
             .collect::<Result<HashMap<Identifier, Title>, error::Application>>()?;
         let items = record
             .properties
-            .get("items")
-            .unwrap_or_default()
-            .split(',')
-            .map(str::trim)
+            .get_list("items")
             .map(|item_name| {
                 Ok(item_map
                     .get(&item_name.parse()?)
@@ -66,10 +62,7 @@ pub fn parse_rooms<'a>(
             .collect::<Result<Vec<Rc<Item>>, error::Application>>()?;
         let characters = record
             .properties
-            .get("characters")
-            .unwrap_or_default()
-            .split(',')
-            .map(str::trim)
+            .get_list("characters")
             .map(|character_name| {
                 Ok(character_map
                     .get(&character_name.parse()?)
@@ -82,9 +75,7 @@ pub fn parse_rooms<'a>(
             .collect::<Result<Vec<Rc<Character>>, error::Application>>()?;
         let actions = record
             .properties
-            .require("actions", &record)?
-            .split(',')
-            .map(str::trim)
+            .get_list("actions")
             .map(|s| s.parse::<Identifier>())
             .collect::<Result<Vec<Identifier>, error::Application>>()?;
         let name = record.name.parse::<Title>()?;

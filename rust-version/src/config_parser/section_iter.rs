@@ -16,7 +16,7 @@ pub enum EntitySection {
 }
 
 #[derive(Debug)]
-pub struct StagedEntity<'a> {
+pub struct Record<'a> {
     pub section: &'a str,
     pub name: &'a str,
     pub variant: Option<Identifier>,
@@ -33,7 +33,7 @@ impl<'a> SectionRecordIter<'a> {
 }
 
 impl<'a> Iterator for SectionRecordIter<'a> {
-    type Item = Result<StagedEntity<'a>, error::Application>;
+    type Item = Result<Record<'a>, error::Application>;
 
     fn next(&mut self) -> Option<Self::Item> {
         for (input_opt, properties) in &mut self.0 {
@@ -56,7 +56,7 @@ impl<'a> Iterator for SectionRecordIter<'a> {
 fn get_record<'a>(
     input: &'a str,
     properties: &'a Properties,
-) -> Result<StagedEntity<'a>, error::Application> {
+) -> Result<Record<'a>, error::Application> {
     let mut section_parts = input.split(':');
     let section = section_parts
         .next()
@@ -81,7 +81,7 @@ fn get_record<'a>(
         .next()
         .map(str::parse::<Identifier>)
         .transpose()?;
-    Ok(StagedEntity {
+    Ok(Record {
         section,
         name,
         variant,
@@ -91,25 +91,17 @@ fn get_record<'a>(
 }
 
 pub trait RequireProperty {
-    fn require(
-        &self,
-        prop: &'static str,
-        staged: &StagedEntity,
-    ) -> Result<&str, error::Application>;
+    fn require(&self, prop: &'static str, record: &Record) -> Result<&str, error::Application>;
 }
 
 impl RequireProperty for Properties {
-    fn require(
-        &self,
-        prop: &'static str,
-        staged: &StagedEntity,
-    ) -> Result<&str, error::Application> {
+    fn require(&self, prop: &'static str, record: &Record) -> Result<&str, error::Application> {
         self.get(prop).ok_or_else(|| error::PropertyNotFound {
-            // It should be impossible to get here without a valid staged.section
+            // It should be impossible to get here without a valid record.section
             #[allow(clippy::unwrap_used)]
-            entity: EntitySection::from_str(staged.section).unwrap().into(),
+            entity: EntitySection::from_str(record.section).unwrap().into(),
             property: prop,
-            id: staged.qualified_name.into(),
+            id: record.qualified_name.into(),
         })
     }
 }

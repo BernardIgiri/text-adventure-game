@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    section_iter::{RequireProperty, StagedEntity},
+    section_iter::{Record, RequireProperty},
     types::{ActionMap, ItemMap, RoomMap},
 };
 
@@ -45,19 +45,19 @@ pub fn parse_actions<'a>(
 }
 
 fn next_change_room_action(
-    staged: &StagedEntity,
+    record: &Record,
     room_map: &RoomMap,
     item_map: &ItemMap,
 ) -> ActionResult {
     let (room_name, variant) = {
         let change_room =
-            staged
+            record
                 .properties
                 .get("change_room")
                 .ok_or_else(|| error::PropertyNotFound {
                     entity: "Room",
                     property: "change_room",
-                    id: staged.qualified_name.into(),
+                    id: record.qualified_name.into(),
                 })?;
         let mut parts = change_room.split("->");
         let room_name = parts
@@ -65,7 +65,7 @@ fn next_change_room_action(
             .ok_or_else(|| error::PropertyNotFound {
                 entity: "Action",
                 property: "change_room:<name>",
-                id: staged.qualified_name.into(),
+                id: record.qualified_name.into(),
             })?
             .parse::<Title>()?;
         let variant = match parts.next() {
@@ -74,13 +74,13 @@ fn next_change_room_action(
         };
         (room_name, variant)
     };
-    let description = staged.properties.require("description", staged)?;
+    let description = record.properties.require("description", record)?;
     let room = match room_map.get_room(&room_name, &variant) {
         Some(r) => r,
         None => return Ok(None),
     };
-    let required = required_item_from_staged(staged, item_map)?;
-    let name = staged.name.parse::<Identifier>()?;
+    let required = required_item_from_record(record, item_map)?;
+    let name = record.name.parse::<Identifier>()?;
     Ok(Some((
         name.clone(),
         Action::ChangeRoom(
@@ -94,10 +94,10 @@ fn next_change_room_action(
     )))
 }
 
-fn next_give_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
-    let items = items_from_staged(staged, item_map)?;
-    let description = staged.properties.require("description", staged)?;
-    let name = staged.name.parse::<Identifier>()?;
+fn next_give_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    let items = items_from_record(record, item_map)?;
+    let description = record.properties.require("description", record)?;
+    let name = record.name.parse::<Identifier>()?;
     Ok(Some((
         name.clone(),
         Action::GiveItem(
@@ -110,22 +110,22 @@ fn next_give_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionRes
     )))
 }
 
-fn next_replace_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
-    let description = staged.properties.require("description", staged)?;
-    let original = staged
+fn next_replace_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    let description = record.properties.require("description", record)?;
+    let original = record
         .properties
-        .require("original", staged)
+        .require("original", record)
         .and_then(|item_name| require_item_from_map(item_name, item_map))?;
-    let replacement = staged
+    let replacement = record
         .properties
-        .require("replacement", staged)
+        .require("replacement", record)
         .and_then(|item_name| require_item_from_map(item_name, item_map))?;
-    let name = staged.name.parse::<Identifier>()?;
+    let name = record.name.parse::<Identifier>()?;
     Ok(Some((
         name,
         Action::ReplaceItem(
             ReplaceItem::builder()
-                .name(staged.name.parse()?)
+                .name(record.name.parse()?)
                 .description(description.into())
                 .original(original)
                 .replacement(replacement)
@@ -134,11 +134,11 @@ fn next_replace_item_action(staged: &StagedEntity, item_map: &ItemMap) -> Action
     )))
 }
 
-fn next_take_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
-    let items = items_from_staged(staged, item_map)?;
-    let description = staged.properties.require("description", staged)?;
-    let required = required_item_from_staged(staged, item_map)?;
-    let name = staged.name.parse::<Identifier>()?;
+fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    let items = items_from_record(record, item_map)?;
+    let description = record.properties.require("description", record)?;
+    let required = required_item_from_record(record, item_map)?;
+    let name = record.name.parse::<Identifier>()?;
     Ok(Some((
         name.clone(),
         Action::TakeItem(
@@ -152,24 +152,24 @@ fn next_take_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionRes
     )))
 }
 
-fn items_from_staged<'a>(
-    staged: &'a StagedEntity<'a>,
+fn items_from_record<'a>(
+    record: &'a Record<'a>,
     item_map: &'a ItemMap,
 ) -> Result<Vec<Rc<Item>>, error::Application> {
-    staged
+    record
         .properties
-        .require("items", staged)?
+        .require("items", record)?
         .split(',')
         .map(str::trim)
         .map(|item_name| require_item_from_map(item_name, item_map))
         .collect()
 }
 
-fn required_item_from_staged<'a>(
-    staged: &'a StagedEntity<'a>,
+fn required_item_from_record<'a>(
+    record: &'a Record<'a>,
     item_map: &'a ItemMap,
 ) -> Result<Option<Rc<Item>>, error::Application> {
-    let required = staged.properties.get("required").filter(|s| !s.is_empty());
+    let required = record.properties.get("required").filter(|s| !s.is_empty());
     match required {
         Some(item_name) => Ok(Some(require_item_from_map(item_name, item_map)?)),
         None => Ok(None),

@@ -6,12 +6,12 @@ use crate::{
 };
 
 use super::{
-    section_iter::StagedEntity,
+    section_iter::Record,
     types::{ItemMap, RoomMap, RoomVariant},
 };
 
 pub fn parse_requirements(
-    record: &StagedEntity,
+    record: &Record,
     entity_type: &'static str,
     item_map: &ItemMap,
     room_map: &RoomMap,
@@ -27,7 +27,7 @@ pub fn parse_requirements(
 }
 
 fn parse_one_requirement(
-    record: &StagedEntity,
+    record: &Record,
     entity_type: &'static str,
     item_map: &ItemMap,
     room_map: &RoomMap,

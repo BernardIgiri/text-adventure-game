@@ -1,49 +1,54 @@
-use ini::Properties;
+use std::rc::Rc;
+
+use ini::SectionIter;
 
 use crate::{
     config_parser::{
-        staging::{get_room_variant, EntitySection, RequireProperty, StagedEntity, Staging},
-        world::WorldData,
+        section_iter::{EntitySection, SectionRecordIter},
+        types::RoomVariant,
     },
-    entity::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
     error,
+    world::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
 };
 
-pub fn list_actions(
-    staging: &Staging,
-    world: &WorldData,
-) -> Result<Vec<(Identifier, Action)>, error::Application> {
-    Ok(staging
-        .get(&EntitySection::Action)
-        .into_iter()
-        .flat_map(|map| map.values())
-        .map(|staged| {
-            if staged.properties.contains_key("change_room") {
-                next_change_room_action(staged, world)
-                    .map(|opt| opt.map(|a| (a.name().clone(), Action::ChangeRoom(a))))
-            } else if staged.properties.contains_key("replace_item") {
-                next_replace_item_action(staged, world)
-                    .map(|opt| opt.map(|a| (a.name().clone(), Action::ReplaceItem(a))))
-            } else if staged.properties.contains_key("give_item") {
-                next_give_item_action(staged, world)
-                    .map(|opt| opt.map(|a| (a.name().clone(), Action::GiveItem(a))))
-            } else if staged.properties.contains_key("take_item") {
-                next_take_item_action(staged, world)
-                    .map(|opt| opt.map(|a| (a.name().clone(), Action::TakeItem(a))))
-            } else {
-                Err(error::EntityDataIncomplete("Action"))
-            }
-        })
-        .collect::<Result<Vec<Option<(Identifier, Action)>>, error::Application>>()?
-        .into_iter()
-        .flatten()
-        .collect())
+use super::{
+    section_iter::{RequireProperty, StagedEntity},
+    types::{ActionMap, ItemMap, RoomMap},
+};
+
+type ActionResult = Result<Option<(Identifier, Action)>, error::Application>;
+
+pub fn parse_actions<'a>(
+    ini_iter: SectionIter<'a>,
+    room_map: &RoomMap,
+    item_map: &ItemMap,
+) -> Result<ActionMap, error::Application> {
+    let mut map = ActionMap::new();
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Action.into()) {
+        let record = record?;
+        let action = if record.properties.contains_key("change_room") {
+            next_change_room_action(&record, room_map, item_map)
+        } else if record.properties.contains_key("replace_item") {
+            next_replace_item_action(&record, item_map)
+        } else if record.properties.contains_key("give_item") {
+            next_give_item_action(&record, item_map)
+        } else if record.properties.contains_key("take_item") {
+            next_take_item_action(&record, item_map)
+        } else {
+            Err(error::EntityDataIncomplete("Action"))
+        }?;
+        if let Some((name, action)) = action {
+            map.insert(name, Rc::new(action));
+        }
+    }
+    Ok(map)
 }
 
 fn next_change_room_action(
     staged: &StagedEntity,
-    world: &WorldData,
-) -> Result<Option<ChangeRoom>, error::Application> {
+    room_map: &RoomMap,
+    item_map: &ItemMap,
+) -> ActionResult {
     let (room_name, variant) = {
         let change_room =
             staged
@@ -70,121 +75,116 @@ fn next_change_room_action(
         (room_name, variant)
     };
     let description = staged.properties.require("description", staged)?;
-    let room = match get_room_variant(world, &room_name, &variant) {
+    let room = match room_map.get_room(&room_name, &variant) {
         Some(r) => r,
         None => return Ok(None),
     };
-    let required = required_item_from_staged(staged, world)?;
-    Ok(Some(
-        ChangeRoom::builder()
-            .name(staged.name.parse()?)
-            .description(description.into())
-            .room(room.clone())
-            .maybe_required(required)
-            .build(),
-    ))
+    let required = required_item_from_staged(staged, item_map)?;
+    let name = staged.name.parse::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::ChangeRoom(
+            ChangeRoom::builder()
+                .name(name)
+                .description(description.into())
+                .room(room)
+                .maybe_required(required)
+                .build(),
+        ),
+    )))
 }
 
-fn next_give_item_action(
-    staged: &StagedEntity,
-    world: &WorldData,
-) -> Result<Option<GiveItem>, error::Application> {
-    let items = items_from_staged(staged, world)?;
+fn next_give_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
+    let items = items_from_staged(staged, item_map)?;
     let description = staged.properties.require("description", staged)?;
-    Ok(Some(
-        GiveItem::builder()
-            .name(staged.name.parse()?)
-            .description(description.into())
-            .items(items)
-            .build(),
-    ))
+    let name = staged.name.parse::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::GiveItem(
+            GiveItem::builder()
+                .name(name)
+                .description(description.into())
+                .items(items)
+                .build(),
+        ),
+    )))
 }
 
-fn next_replace_item_action(
-    staged: &StagedEntity,
-    world: &WorldData,
-) -> Result<Option<ReplaceItem>, error::Application> {
+fn next_replace_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
     let description = staged.properties.require("description", staged)?;
     let original = staged
         .properties
         .require("original", staged)
-        .and_then(|item_name| item_from_world(item_name, world))?;
+        .and_then(|item_name| require_item_from_map(item_name, item_map))?;
     let replacement = staged
         .properties
         .require("replacement", staged)
-        .and_then(|item_name| item_from_world(item_name, world))?;
-    Ok(Some(
-        ReplaceItem::builder()
-            .name(staged.name.parse()?)
-            .description(description.into())
-            .original(original)
-            .replacement(replacement)
-            .build(),
-    ))
+        .and_then(|item_name| require_item_from_map(item_name, item_map))?;
+    let name = staged.name.parse::<Identifier>()?;
+    Ok(Some((
+        name,
+        Action::ReplaceItem(
+            ReplaceItem::builder()
+                .name(staged.name.parse()?)
+                .description(description.into())
+                .original(original)
+                .replacement(replacement)
+                .build(),
+        ),
+    )))
 }
 
-fn next_take_item_action(
-    staged: &StagedEntity,
-    world: &WorldData,
-) -> Result<Option<TakeItem>, error::Application> {
-    let items = items_from_staged(staged, world)?;
+fn next_take_item_action(staged: &StagedEntity, item_map: &ItemMap) -> ActionResult {
+    let items = items_from_staged(staged, item_map)?;
     let description = staged.properties.require("description", staged)?;
-    let required = required_item_from_staged(staged, world)?;
-    Ok(Some(
-        TakeItem::builder()
-            .name(staged.name.parse()?)
-            .description(description.into())
-            .items(items)
-            .maybe_required(required)
-            .build(),
-    ))
+    let required = required_item_from_staged(staged, item_map)?;
+    let name = staged.name.parse::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::TakeItem(
+            TakeItem::builder()
+                .name(name)
+                .description(description.into())
+                .items(items)
+                .maybe_required(required)
+                .build(),
+        ),
+    )))
 }
 
 fn items_from_staged<'a>(
     staged: &'a StagedEntity<'a>,
-    world: &'a WorldData,
-) -> Result<Vec<Item>, error::Application> {
+    item_map: &'a ItemMap,
+) -> Result<Vec<Rc<Item>>, error::Application> {
     staged
         .properties
         .require("items", staged)?
-        .split(",")
+        .split(',')
         .map(str::trim)
-        .map(|item_name| item_from_world(item_name, world))
+        .map(|item_name| require_item_from_map(item_name, item_map))
         .collect()
 }
 
 fn required_item_from_staged<'a>(
     staged: &'a StagedEntity<'a>,
-    world: &'a WorldData,
-) -> Result<Option<Item>, error::Application> {
+    item_map: &'a ItemMap,
+) -> Result<Option<Rc<Item>>, error::Application> {
     let required = staged.properties.get("required").filter(|s| !s.is_empty());
     match required {
-        Some(item_name) => Ok(Some(item_from_world(item_name, world)?)),
+        Some(item_name) => Ok(Some(require_item_from_map(item_name, item_map)?)),
         None => Ok(None),
     }
 }
 
-fn item_from_world(item_name: &str, world: &WorldData) -> Result<Item, error::Application> {
-    Ok(world
-        .item
+fn require_item_from_map(
+    item_name: &str,
+    item_map: &ItemMap,
+) -> Result<Rc<Item>, error::Application> {
+    Ok(item_map
         .get(&item_name.parse()?)
         .ok_or_else(|| error::EntityNotFound {
             etype: "Item",
             id: item_name.into(),
         })?
         .clone())
-}
-
-impl RequireProperty for Properties {
-    fn require(
-        &self,
-        prop: &'static str,
-        staged: &StagedEntity,
-    ) -> Result<&str, error::Application> {
-        self.get(prop).ok_or_else(|| error::PropertyNotFound {
-            entity: "Action",
-            property: prop,
-            id: staged.qualified_name.into(),
-        })
-    }
 }

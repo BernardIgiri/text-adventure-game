@@ -4,6 +4,7 @@
 mod config_parser;
 mod entity;
 mod error;
+mod world;
 
 use clap::Parser;
 use ini::Ini;
@@ -20,6 +21,6 @@ fn main() -> Result<(), error::Application> {
     let file = args.file.to_str().ok_or(error::CouldNotLoadFile)?;
     let ini = Ini::load_from_file(file).map_err(|_| error::CouldNotLoadFile)?;
     let world = config_parser::parse(ini)?;
-    println!("{:#?}", world);
+    dbg!(world);
     Ok(())
 }

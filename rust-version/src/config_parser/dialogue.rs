@@ -1,15 +1,55 @@
+use std::rc::Rc;
+
+use ini::SectionIter;
+
 use crate::{
-    entity::{Dialogue, Identifier},
     error,
+    world::{Dialogue, Response},
 };
 
-use super::{staging::Staging, world::WorldData};
+use super::{
+    requirement::parse_requirements,
+    section_iter::{EntitySection, RequireProperty, SectionRecordIter},
+    types::{DialogueMap, ItemMap, ResponseMap, RoomMap},
+};
 
-// TODO: Implement this!
-#[allow(unused_variables)]
-pub fn list_dialogues(
-    staging: &Staging,
-    world: &WorldData,
-) -> Result<Vec<(Identifier, Option<Identifier>, Dialogue)>, error::Application> {
-    todo!()
+pub fn parse_dialogues(
+    ini_iter: SectionIter,
+    response_map: &ResponseMap,
+    item_map: &ItemMap,
+    room_map: &RoomMap,
+) -> Result<DialogueMap, error::Application> {
+    let mut map = DialogueMap::new();
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Dialogue.into()) {
+        let record = record?;
+        let text = record.properties.require("text", &record)?;
+        let responses = record
+            .properties
+            .get("response")
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .map(|s| {
+                Ok(response_map
+                    .get(&s.parse()?)
+                    .ok_or_else(|| error::EntityNotFound {
+                        etype: "Response",
+                        id: s.into(),
+                    })?
+                    .clone())
+            })
+            .collect::<Result<Vec<Rc<Response>>, error::Application>>()?;
+        let requires = parse_requirements(&record, "Response", item_map, room_map)?;
+        let dialogue = Rc::new(
+            Dialogue::builder()
+                .text(text.into())
+                .responses(responses)
+                .requires(requires)
+                .build(),
+        );
+        map.entry(record.name.parse()?)
+            .or_default()
+            .insert(record.variant.clone(), dialogue);
+    }
+    Ok(map)
 }

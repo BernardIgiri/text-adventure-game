@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -10,7 +12,7 @@ pub enum Application {
         property: &'static str,
         id: String,
     },
-    #[error("No `{0}` data found!")]
+    #[error("Expected `{0}` data not found!")]
     EntitySectionNotFound(&'static str),
     #[error("Could not find entity `{etype}` with id `{id}`!")]
     EntityNotFound { etype: &'static str, id: String },
@@ -25,6 +27,20 @@ pub enum Application {
     EntityReferencesNotFound(Vec<String>),
     #[error("Incomplete data for entity `{0}`")]
     EntityDataIncomplete(&'static str),
+    #[error("Missing entity references:\n{0:?}\n")]
+    MultipleMissingEntities(Vec<MissingEntityGroup>),
+}
+
+#[derive(Debug)]
+pub struct MissingEntityGroup {
+    pub etype: &'static str,
+    pub ids: Vec<String>,
+}
+
+impl Display for MissingEntityGroup {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}: {}", self.etype, self.ids.join(", "))
+    }
 }
 
 pub use Application::*;

@@ -1,15 +1,54 @@
+use std::rc::Rc;
+
+use ini::SectionIter;
+
 use crate::{
-    entity::{Identifier, Response},
+    config_parser::{
+        requirement::parse_requirements,
+        section_iter::{EntitySection, RequireProperty, SectionRecordIter},
+    },
     error,
+    world::{Identifier, Response},
 };
 
-use super::{staging::Staging, world::WorldData};
+use super::types::{ActionMap, ItemMap, ResponseMap, RoomMap};
 
-// TODO: Implement this!
-#[allow(unused_variables)]
-pub fn list_responses(
-    staging: &Staging,
-    world: &WorldData,
-) -> Result<Vec<(Identifier, Response)>, error::Application> {
-    todo!()
+pub fn parse_responses<'a>(
+    ini_iter: SectionIter<'a>,
+    action_map: &ActionMap,
+    item_map: &ItemMap,
+    room_map: &RoomMap,
+) -> Result<ResponseMap, error::Application> {
+    let mut map = ResponseMap::new();
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Response.into()) {
+        let record = record?;
+        let text = record.properties.require("text", &record)?;
+        let leads_to = match record.properties.get("leads_to") {
+            Some(s) => Some(s.parse()?),
+            None => None,
+        };
+        let action = match record.properties.get("action") {
+            Some(action_name) => Some(
+                action_map
+                    .get(&action_name.parse::<Identifier>()?)
+                    .ok_or_else(|| error::EntityNotFound {
+                        etype: "Action",
+                        id: action_name.into(),
+                    })?
+                    .clone(),
+            ),
+            None => None,
+        };
+        let requires = parse_requirements(&record, "Response", item_map, room_map)?;
+        let response = Rc::new(
+            Response::builder()
+                .text(text.into())
+                .maybe_leads_to(leads_to)
+                .maybe_triggers(action)
+                .requires(requires)
+                .build(),
+        );
+        map.insert(record.name.parse()?, response);
+    }
+    Ok(map)
 }

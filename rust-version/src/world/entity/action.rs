@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use bon::Builder;
 use derive_getters::Getters;
 
@@ -12,7 +14,7 @@ macro_rules! define_action {
             $($field:ident : $type:ty),* $(,)?
         }
     ) => {
-        // TODO: Implement later
+        // TODO: Implment this!
         #[allow(dead_code)]
         #[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
         pub struct $name {
@@ -26,22 +28,22 @@ macro_rules! define_action {
 }
 
 define_action!(ChangeRoom {
-    required: Option<Item>,
-    room: Room,
+    required: Option<Rc<Item>>,
+    room: Rc<Room>,
 });
 
 define_action!(ReplaceItem {
-    original: Item,
-    replacement: Item,
+    original: Rc<Item>,
+    replacement: Rc<Item>,
 });
 
 define_action!(GiveItem {
-    items: Vec<Item>,
+    items: Vec<Rc<Item>>,
 });
 
 define_action!(TakeItem {
-    required: Option<Item>,
-    items: Vec<Item>,
+    required: Option<Rc<Item>>,
+    items: Vec<Rc<Item>>,
 });
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -28,6 +28,9 @@ impl Room {
     pub fn exit_directions(&self) -> impl Iterator<Item = &Identifier> {
         self.exits.keys()
     }
+    pub fn is_trap(&self) -> bool {
+        self.exits.is_empty()
+    }
 }
 
 #[derive(new)]
@@ -47,7 +50,7 @@ impl<'a> RoomRefs<'a> {
     }
 }
 
-#[derive(Getters, new, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, new, Hash, Debug, Clone, PartialEq, Eq)]
 pub struct Item {
     name: Identifier,
     description: String,

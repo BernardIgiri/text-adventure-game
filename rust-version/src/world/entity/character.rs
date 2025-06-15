@@ -35,8 +35,23 @@ impl<'a> CharacterRefs<'a> {
 #[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
 pub struct Dialogue {
     text: String,
+    #[getter(skip)]
     responses: Vec<Rc<Response>>,
     requires: Vec<Rc<Requirement>>,
+}
+
+#[derive(new)]
+pub struct DialogueRefs<'a>(&'a Dialogue);
+
+impl<'a> DialogueRefs<'a> {
+    // TODO: Use this
+    #[allow(dead_code)]
+    pub const fn get(&self) -> &Dialogue {
+        self.0
+    }
+    pub const fn responses(&self) -> &Vec<Rc<Response>> {
+        &self.0.responses
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

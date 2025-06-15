@@ -27,9 +27,7 @@ pub fn parse(ini: Ini) -> Result<World, error::Application> {
     let title = parse_title(&ini)?;
     let characters = parse_characters(ini.iter())?;
     let items = parse_items(ini.iter())?;
-    dbg!(3);
     let rooms = parse_rooms(ini.iter(), &characters, &items)?;
-    dbg!(4);
     let actions = parse_actions(ini.iter(), &rooms, &items)?;
     let responses = parse_responses(ini.iter(), &actions, &items, &rooms)?;
     let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms)?;

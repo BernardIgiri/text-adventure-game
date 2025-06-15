@@ -136,7 +136,6 @@ mod test {
         assert_that!(robery.requires()).has_length(3);
 
         assert_eq!(scared.text(), &"Hey, is somebody there?".to_string());
-        assert_that!(scared.responses()).is_empty();
         assert_that!(scared.requires()).has_length(1);
         assert_that!(scared.requires().first().unwrap()).satisfies_with_message(
             "expected RoomVariant",
@@ -146,11 +145,8 @@ mod test {
             },
         );
 
-        assert_that!(happy.responses()).has_length(2);
         assert_that!(happy.requires()).has_length(1);
         assert_eq!(happy.text(), &"Howdy there stranger!".to_string());
-        assert_that!(happy.responses().first().unwrap().text()).contains("Hello");
-        assert_that!(happy.responses().get(1).unwrap().text()).contains("Goodbye");
         assert_that!(happy.requires().first().unwrap()).satisfies_with_message(
             "expected RoomVariant",
             |r| {

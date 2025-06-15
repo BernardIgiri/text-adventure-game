@@ -68,7 +68,6 @@ mod test {
     fn test_empty_data() {
         let ini = Ini::load_from_str(BAD_DATA_EMPTY).unwrap();
         let result = parse_title(&ini);
-        dbg!(&result);
         assert!(matches!(result, Err(error::PropertyNotFound { .. })));
     }
 

@@ -7,7 +7,7 @@ use std::{
 
 use derive_more::Debug;
 use derive_new::new;
-use entity::{CharacterRefs, ResponseRefs, RoomRefs};
+use entity::{CharacterRefs, DialogueRefs, ResponseRefs, RoomRefs};
 
 pub use entity::{
     Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, Item, ReplaceItem,
@@ -99,6 +99,9 @@ impl World {
             dialog: dialogues,
         })
     }
+    pub fn title(&self) -> &String {
+        self.title.title()
+    }
 }
 
 // TODO: Implement this
@@ -112,38 +115,130 @@ pub struct GameState {
 
 // TODO: Implement this
 #[allow(dead_code)]
+impl GameState {
+    pub fn enter_room(&mut self, room: Rc<Room>) {
+        self.current_room = Some(room);
+    }
+
+    pub fn do_action(&mut self, action: Rc<Action>) -> Option<()> {
+        use Action::*;
+
+        match action.as_ref() {
+            ChangeRoom(c) => {
+                if let Some(r) = c.required() {
+                    if !self.inventory.contains(r) {
+                        return None;
+                    } else {
+                        self.inventory.remove(r);
+                    }
+                }
+                self.current_room = Some(c.room().clone());
+                Some(())
+            }
+            GiveItem(g) => {
+                if g.items().iter().all(|i| self.inventory.contains(i)) {
+                    for i in g.items() {
+                        self.inventory.remove(i);
+                    }
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            ReplaceItem(r) => {
+                if self.inventory.contains(r.original()) {
+                    self.inventory.remove(r.original());
+                    self.inventory.insert(r.replacement().clone());
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            TakeItem(t) => {
+                if let Some(r) = t.required() {
+                    if !self.inventory.contains(r) {
+                        return None;
+                    } else {
+                        self.inventory.remove(r);
+                    }
+                }
+                self.inventory.extend(t.items().clone());
+                Some(())
+            }
+        }
+    }
+}
+// TODO: Implement this
+#[allow(dead_code)]
 #[derive(new, Debug)]
 pub struct GameQuery<'a> {
     world: &'a World,
-    state: &'a mut GameState,
+    state: &'a GameState,
 }
 
 // TODO: Implement this
+// World references should already be validated by this point.
+#[allow(clippy::expect_used)]
 #[allow(dead_code)]
 impl<'a> GameQuery<'a> {
-    pub fn get_character_dialogue(&self, character: &Character) -> Option<Rc<Dialogue>> {
-        self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
+    pub fn is_alive(&self) -> bool {
+        self.current_room().is_trap()
     }
-    pub fn get_room_actions(&self, room: &Room) -> Vec<Rc<Action>> {
-        RoomRefs::new(room)
-            .actions()
+    pub fn current_room(&self) -> Rc<Room> {
+        self.state
+            .current_room
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| {
+                self.look_up_room(self.world.title.start_room(), &None)
+                    .expect("The start_room should be validated by this point.")
+            })
+    }
+    pub fn character_dialogue(&self, character: &Character) -> Rc<Dialogue> {
+        self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
+            .expect("Character dialogue names should be validated by this point.")
+    }
+    pub fn dialogue_responses(&self, dialogue: &Dialogue) -> Vec<Rc<Response>> {
+        DialogueRefs::new(dialogue)
+            .responses()
             .iter()
-            .filter_map(|id| self.world.action.get(id))
+            .filter(|response| {
+                response.requires().is_empty()
+                    || response.requires().iter().all(|r| self.requirement_met(r))
+            })
             .cloned()
             .collect()
     }
-    pub fn get_room_exit(&self, room: &Room, direction: Identifier) -> Option<Rc<Room>> {
+    pub fn room_actions(&self, room: &Room) -> Vec<Rc<Action>> {
+        RoomRefs::new(room)
+            .actions()
+            .iter()
+            .filter_map(|name| self.world.action.get(name))
+            .cloned()
+            .collect()
+    }
+    pub fn room_exits(&self, room: &Room, direction: Identifier) -> Rc<Room> {
         RoomRefs::new(room)
             .exits()
             .get(&direction)
-            .and_then(|id| self.state.active_room_variants.get(id).map(|v| (id, v)))
-            .and_then(|(id, variant)| self.world.room.get(id)?.get(variant).cloned())
+            .and_then(|name| {
+                self.state
+                    .active_room_variants
+                    .get(name)
+                    .map(|variant| (name, variant))
+            })
+            .and_then(|(name, variant)| self.look_up_room(name, variant))
+            .expect("The Room id data should be validated by this point.")
     }
-    pub fn get_response_reply(&self, response: &Response) -> Option<Rc<Dialogue>> {
+    pub fn response_reply(&self, response: &Response) -> Rc<Dialogue> {
         ResponseRefs::new(response)
             .leads_to()
             .as_ref()
-            .map(|id| self.look_up_dialogue(id))?
+            .and_then(|name| self.look_up_dialogue(name))
+            .expect("Response name should be validated by this point.")
+    }
+    fn look_up_room(&self, name: &Title, variant: &Option<Identifier>) -> Option<Rc<Room>> {
+        self.world.room.get(name)?.get(variant).cloned()
     }
     fn look_up_dialogue(&self, id: &Identifier) -> Option<Rc<Dialogue>> {
         self.world

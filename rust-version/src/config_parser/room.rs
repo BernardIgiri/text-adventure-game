@@ -122,8 +122,11 @@ mod test {
 
         [Room:Patio]
         description=A beautiful sun lit, picket fenced, lawn, sprawls out to a lovely neighborhood wi- a bird just pooped on you!
-        exits=east:Study
+        exits=east:Study,south:SinkHole
         characters=NeighborFrank,BlueBird
+
+        [Room:SinkHole]
+        description=On second thought, maybe you have stayed inside? You cannot escape!
     ";
     const BAD_DATA: &str = r"
         [Room:Study]
@@ -149,7 +152,7 @@ mod test {
         let characters = character_map();
         let rooms = parse_rooms(ini.iter(), &characters, &items).unwrap();
         assert_that!(&rooms)
-            .has_length(3)
+            .has_length(4)
             .contains_key(t("DiningRoom"))
             .contains_key(t("Study"))
             .contains_key(t("Patio"));

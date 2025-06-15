@@ -181,7 +181,7 @@ pub struct GameQuery<'a> {
 #[allow(clippy::expect_used)]
 #[allow(dead_code)]
 impl<'a> GameQuery<'a> {
-    pub fn is_alive(&self) -> bool {
+    pub fn is_survivable(&self) -> bool {
         self.current_room().is_trap()
     }
     pub fn current_room(&self) -> Rc<Room> {

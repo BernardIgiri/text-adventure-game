@@ -1,1 +1,6 @@
-pub enum Menu {}
+use crate::world::{Action, Character};
+
+pub enum Player {
+    Idle,
+    Dying,
+}

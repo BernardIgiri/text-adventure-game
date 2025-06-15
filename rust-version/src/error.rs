@@ -26,6 +26,8 @@ pub enum Application {
     EntityDataIncomplete(&'static str),
     #[error("Missing entity references:\n{0:?}\n")]
     MultipleMissingEntities(Vec<MissingEntityGroup>),
+    #[error("Uknown error")]
+    UknownError,
 }
 
 #[derive(Debug)]

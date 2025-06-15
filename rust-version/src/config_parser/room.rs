@@ -94,3 +94,78 @@ pub fn parse_rooms<'a>(
     }
     Ok(map)
 }
+
+// Allowed in tests
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod test {
+    use asserting::prelude::*;
+    use ini::Ini;
+
+    use crate::config_parser::test_utils::{
+        data::{character_map, item_map},
+        t,
+    };
+
+    use super::parse_rooms;
+
+    const GOOD_DATA: &str = r"
+        [Room:Study]
+        description=Shelves full of books line the wall. A nice writing desk with a lamp occupies the south corner.
+        exits=east:DiningRoom,west:Patio
+        characters=CuriousCalvin
+
+        [Room:DiningRoom]
+        description=The aroma of freshly baked bread and mom's spicy fried chicken fills the air.
+        exits=west:Study
+        items=key
+
+        [Room:Patio]
+        description=A beautiful sun lit, picket fenced, lawn, sprawls out to a lovely neighborhood wi- a bird just pooped on you!
+        exits=east:Study
+        characters=NeighborFrank,BlueBird
+    ";
+    const BAD_DATA: &str = r"
+        [Room:Study]
+        description=Shelves full of books line the wall. A nice writing desk with a lamp occupies the south corner.
+        exits=east:DiningRoom,west:Patio
+        characters=Waldo
+
+        [Room:DiningRoom]
+        description=The aroma of freshly baked bread and mom's spicy fried chicken fills the air.
+        exits=west:Study
+        items=key
+
+        [Room:Patio]
+        description=A beautiful sun lit, picket fenced, lawn, sprawls out to a lovely neighborhood wi- a bird just pooped on you!
+        exits=east:Study
+        characters=NeighborFrank,BlueBird
+    ";
+
+    #[test]
+    fn test_good_data() {
+        let ini = Ini::load_from_str(GOOD_DATA).unwrap();
+        let items = item_map();
+        let characters = character_map();
+        let rooms = parse_rooms(ini.iter(), &characters, &items).unwrap();
+        assert_that!(&rooms)
+            .has_length(3)
+            .contains_key(t("DiningRoom"))
+            .contains_key(t("Study"))
+            .contains_key(t("Patio"));
+    }
+
+    #[test]
+    fn test_bad_data() {
+        let ini = Ini::load_from_str(BAD_DATA).unwrap();
+        let items = item_map();
+        let characters = character_map();
+        let rooms = parse_rooms(ini.iter(), &characters, &items);
+        assert_that!(rooms)
+            .is_err()
+            .extracting(|e| e.err().unwrap().to_string())
+            .contains("not find")
+            .contains("Waldo")
+            .contains("Character");
+    }
+}

@@ -2,7 +2,6 @@
 #![warn(clippy::all, clippy::nursery)]
 
 mod config_parser;
-mod entity;
 mod error;
 mod world;
 

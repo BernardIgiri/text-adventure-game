@@ -8,6 +8,9 @@ mod response;
 mod room;
 mod types;
 
+#[cfg(test)]
+mod test_utils;
+
 use action::parse_actions;
 use character::parse_characters;
 use dialogue::parse_dialogues;

@@ -32,66 +32,49 @@ Character
 // In absense of Responses there needs to be a generic Goodby response
 // In absense of Dialogue there needs to be a generic "..." dialogue
 // Add a GameOver action
-    rooms
-        .room_refs()
-        .map(|room| {
-            let missing_action_ids: Vec<String> = room
-                .actions()
-                .iter()
-                .filter(|id| !actions.contains_key(id))
-                .map(ToString::to_string)
-                .collect();
-            if !missing_action_ids.is_empty() {
-                return Err(error::EntityNotFound {
-                    etype: "Action(s)",
-                    id: missing_action_ids.join(", "),
-                });
-            }
-            let missing_room_ids: Vec<String> = room
-                .exits()
-                .values()
-                .filter(|id| !rooms.contains_key(id))
-                .map(ToString::to_string)
-                .collect();
-            if !missing_room_ids.is_empty() {
-                return Err(error::EntityNotFound {
-                    etype: "Room(s)",
-                    id: missing_room_ids.join(", "),
-                });
-            }
-            Ok(())
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+use ini::Ini;
 
-xpub trait RoomRefsIter<'a> {
-    type Iter: Iterator<Item = RoomRefs<'a>>;
-    fn room_refs(&'a self) -> Self::Iter;
+mod utils;
+
+const GOOD_CHARACTER_DATA: &str = r"
+                [Character:OldMan]
+                start_dialogue=greeting_old_man
+
+                [Character:Merchant]
+                start_dialogue=buy_or_leave
+
+                [Character:Guard]
+                start_dialogue=halt_intruder
+            ";
+const BAD_CHARACTER_DATA: &str = r"
+                [Character:OldMan]
+
+                [Character:Merchant]
+                start_dialogue=buy_or_leave
+            ";
+
+#[test]
+fn test_parse_characters_success() {
+    let ini = Ini::load_from_str(GOOD_CHARACTER_DATA);
+    let characters = parse_characters(ini.iter()).unwrap();
+    assert_eq!(characters.len(), 3);
+
+    let c = characters.get(&"OldMan".parse().unwrap()).unwrap();
+    assert_eq!(c.name().to_string().as_str(), "Old Man");
+
+    assert!(characters.contains_key(&"Merchant".parse().unwrap()));
+    assert!(characters.contains_key(&"Guard".parse().unwrap()));
 }
 
-impl<'a> RoomRefsIter<'a> for RoomMap {
-    type Iter = Map<
-        FlatMap<
-            hash_map::Values<'a, Title, HashMap<Option<Identifier>, Rc<Room>>>,
-            hash_map::Values<'a, Option<Identifier>, Rc<Room>>,
-            fn(
-                &'a HashMap<Option<Identifier>, Rc<Room>>,
-            ) -> hash_map::Values<'a, Option<Identifier>, Rc<Room>>,
-        >,
-        fn(&'a Rc<Room>) -> RoomRefs<'a>,
-    >;
+#[test]
+fn test_parse_characters_missing_field() {
+    let ini = Ini::load_from_str(BAD_CHARACTER_DATA);
+    let characters = parse_characters(ini.iter()).unwrap();
 
-    fn room_refs(&'a self) -> Self::Iter {
-        self.values()
-            .flat_map(HashMap::values as _)
-            .map(|room| RoomRefs::new(room))
-    }
-}
-
-pub trait CharacterRefsIter<'a> {
-    type Iter: Iterator<Item = CharacterRefs<'a>>;
-    fn character_refs(&'a self) -> Self::Iter;
-}
-
-impl<'a> CharacterRefsIter<'a> for CharacterMap {
-
+    assert!(result.is_err());
+    let err = result.err().unwrap().to_string();
+    assert_that!(err.as_str())
+        .contains("Character")
+        .contains("start_dialogue")
+        .contains("OldMan");
 }

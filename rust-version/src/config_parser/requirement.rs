@@ -83,3 +83,69 @@ fn parse_one_requirement(
     };
     Ok(Rc::new(requirement))
 }
+
+// Allowed in tests
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod test {
+
+    use ini::Properties;
+
+    use crate::{
+        config_parser::test_utils::{
+            data::{item_map, room_map},
+            i,
+        },
+        world::Requirement,
+    };
+
+    use super::*;
+    use asserting::prelude::*;
+
+    #[test]
+    fn test_parse_has_item_requirement() {
+        let items = item_map();
+        let rooms = room_map(&items, true);
+
+        let mut props = Properties::new();
+        props.insert("requires".to_string(), "has_item:key".to_string());
+
+        let record = Record {
+            section: "TestSection",
+            name: "test_name",
+            variant: None,
+            qualified_name: "TestSection:test_name",
+            properties: &props,
+        };
+
+        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        assert_that!(&result).has_length(1);
+
+        match &*result[0] {
+            Requirement::HasItem(item) => {
+                assert_eq!(item.name(), &i("key"));
+            }
+            _ => panic!("Expected HasItem requirement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_invalid_requirement_type() {
+        let items = item_map();
+        let rooms = room_map(&items, true);
+
+        let mut props = Properties::new();
+        props.insert("requires".to_string(), "nonsense:value".to_string());
+
+        let record = Record {
+            section: "TestSection",
+            name: "test_name",
+            variant: None,
+            qualified_name: "TestSection:test_name",
+            properties: &props,
+        };
+
+        let err = parse_requirements(&record, "Test", &items, &rooms).unwrap_err();
+        assert_that!(err.to_string()).contains("requirement");
+    }
+}

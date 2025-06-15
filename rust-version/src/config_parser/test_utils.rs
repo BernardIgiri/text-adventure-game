@@ -1,4 +1,3 @@
-#![cfg(test)]
 // Allowed in Tests
 #![allow(clippy::unwrap_used)]
 

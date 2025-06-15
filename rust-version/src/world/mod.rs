@@ -10,8 +10,8 @@ use derive_new::new;
 use entity::{CharacterRefs, ResponseRefs, RoomRefs};
 
 pub use entity::{
-    Action, ChangeRoom, Character, Dialogue, GiveItem, Identifier, Item, ReplaceItem, Requirement,
-    Response, Room, TakeItem, Title,
+    Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, Item, ReplaceItem,
+    Requirement, Response, Room, TakeItem, Title,
 };
 
 use crate::error::{self, MissingEntityGroup};
@@ -22,6 +22,7 @@ pub type RoomMap = HashMap<Title, HashMap<Option<Identifier>, Rc<Room>>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct World {
+    title: GameTitle,
     action: ActionMap,
     room: RoomMap,
     dialog: DialogueMap,
@@ -29,6 +30,7 @@ pub struct World {
 
 impl World {
     pub fn try_new(
+        title: GameTitle,
         actions: ActionMap,
         rooms: RoomMap,
         dialogues: DialogueMap,
@@ -65,6 +67,9 @@ impl World {
                     .map(ToString::to_string),
             );
         }
+        if !rooms.contains_key(title.start_room()) {
+            missing_room_ids.push(title.start_room().to_string());
+        }
         let mut missing = Vec::new();
         if !missing_dialogue_ids.is_empty() {
             missing.push(MissingEntityGroup {
@@ -88,6 +93,7 @@ impl World {
             return Err(error::Application::MultipleMissingEntities(missing));
         }
         Ok(Self {
+            title,
             action: actions,
             room: rooms,
             dialog: dialogues,

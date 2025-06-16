@@ -11,7 +11,7 @@ use super::{
     Item,
 };
 
-#[derive(Getters, new, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, new, Debug, PartialEq, Eq)]
 pub struct Character {
     name: Title,
     #[getter(skip)]
@@ -32,7 +32,7 @@ impl<'a> CharacterRefs<'a> {
     }
 }
 
-#[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, Builder, Debug, PartialEq, Eq)]
 pub struct Dialogue {
     text: String,
     #[getter(skip)]
@@ -54,13 +54,13 @@ impl<'a> DialogueRefs<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Requirement {
     HasItem(Rc<Item>),
     RoomVariant(Rc<Room>),
 }
 
-#[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, Builder, Debug, PartialEq, Eq)]
 pub struct Response {
     text: String,
     #[getter(skip)]

@@ -16,8 +16,8 @@ pub enum Application {
     EntitySectionNotFound(&'static str),
     #[error("Could not find entity `{etype}` with id `{id}`!")]
     EntityNotFound { etype: &'static str, id: String },
-    #[error("Failed to load file!")]
-    CouldNotLoadFile,
+    #[error("Failed to load file due to: {0}")]
+    CouldNotLoadFile(String),
     #[error("Cannot convert `{value}` to `{dtype}`")]
     IllegalConversion { value: String, dtype: &'static str },
     #[error("Name/id matches not found for entities: `{0:?}`")]

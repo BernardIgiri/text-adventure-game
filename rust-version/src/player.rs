@@ -1,6 +1,14 @@
-use crate::world::{Action, Character};
+use std::rc::Rc;
 
+use crate::world::{Action, Character, Dialogue};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Player {
     Idle,
-    Dying,
+    StartingChat,
+    ChatWith(Rc<Character>, Option<Rc<Dialogue>>),
+    SelectingAction,
+    DoingAction(Rc<Action>),
+    Leaving,
+    GameOver,
 }

@@ -3,6 +3,7 @@ mod character;
 mod dialogue;
 mod item;
 mod iter;
+mod preprocessor;
 mod requirement;
 mod response;
 mod room;
@@ -22,6 +23,8 @@ use room::parse_rooms;
 use title::parse_title;
 
 use crate::{error, world::World};
+
+pub use preprocessor::*;
 
 pub fn parse(ini: Ini) -> Result<World, error::Application> {
     let title = parse_title(&ini)?;

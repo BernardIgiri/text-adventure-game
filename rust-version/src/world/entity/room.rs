@@ -9,7 +9,7 @@ use super::{
     Character,
 };
 
-#[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, Builder, Debug, PartialEq, Eq)]
 pub struct Room {
     name: Title,
     variant: Option<Identifier>,
@@ -50,7 +50,7 @@ impl<'a> RoomRefs<'a> {
     }
 }
 
-#[derive(Getters, new, Hash, Debug, Clone, PartialEq, Eq)]
+#[derive(Getters, new, Hash, Debug, PartialEq, Eq)]
 pub struct Item {
     name: Identifier,
     description: String,

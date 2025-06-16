@@ -13,6 +13,20 @@ pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
             property: "title",
             id: "n/a".into(),
         })?;
+    let greeting = top_level
+        .get("greeting")
+        .ok_or_else(|| error::PropertyNotFound {
+            entity: "Top Level",
+            property: "greeting",
+            id: "n/a".into(),
+        })?;
+    let credits = top_level
+        .get("credits")
+        .ok_or_else(|| error::PropertyNotFound {
+            entity: "Top Level",
+            property: "credits",
+            id: "n/a".into(),
+        })?;
     let start_room = top_level
         .get("start_room")
         .ok_or_else(|| error::PropertyNotFound {
@@ -20,7 +34,12 @@ pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
             property: "start_room",
             id: "n/a".into(),
         })?;
-    Ok(GameTitle::new(title.into(), start_room.parse()?))
+    Ok(GameTitle::new(
+        title.into(),
+        greeting.into(),
+        credits.into(),
+        start_room.parse()?,
+    ))
 }
 
 // Allowed in tests
@@ -35,15 +54,21 @@ mod test {
 
     const GOOD_DATA: &str = r"
         title = The Beach Trip
+        greeting = Welcome to the beach bro!
+        credits = Special thanks to my mom!
         start_room = TheCar
     ";
     const BAD_DATA_NO_START: &str = r"
         title = The Beach Trip
+        greeting = Welcome to the beach bro!
+        credits = Special thanks to my mom!
     ";
     const BAD_DATA_EMPTY: &str = r"
     ";
     const BAD_DATA_BAD_START: &str = r"
         title = The Beach Trip
+        greeting = Welcome to the beach bro!
+        credits = Special thanks to my mom!
         start_room = theCar
     ";
 
@@ -52,6 +77,8 @@ mod test {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let title = parse_title(&ini).unwrap();
         assert_eq!(title.title(), &"The Beach Trip".to_string());
+        assert_eq!(title.greeting(), &"Welcome to the beach bro!".to_string());
+        assert_eq!(title.credits(), &"Special thanks to my mom!".to_string());
         assert_eq!(title.start_room(), &t("TheCar"));
     }
 

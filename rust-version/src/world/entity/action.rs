@@ -15,7 +15,7 @@ macro_rules! define_action {
         }
     ) => {
         #[allow(dead_code)]
-        #[derive(Getters, Builder, Debug, Clone, PartialEq, Eq)]
+        #[derive(Getters, Builder, Debug, PartialEq, Eq)]
         pub struct $name {
             name: Identifier,
             description: String,
@@ -45,10 +45,29 @@ define_action!(TakeItem {
     items: Vec<Rc<Item>>,
 });
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     ChangeRoom(ChangeRoom),
     GiveItem(GiveItem),
     ReplaceItem(ReplaceItem),
     TakeItem(TakeItem),
+}
+
+impl Action {
+    pub fn name(&self) -> &Identifier {
+        match &self {
+            Self::ChangeRoom(change_room) => change_room.name(),
+            Self::GiveItem(give_item) => give_item.name(),
+            Self::ReplaceItem(replace_item) => replace_item.name(),
+            Self::TakeItem(take_item) => take_item.name(),
+        }
+    }
+    pub fn description(&self) -> &String {
+        match &self {
+            Self::ChangeRoom(change_room) => change_room.description(),
+            Self::GiveItem(give_item) => give_item.description(),
+            Self::ReplaceItem(replace_item) => replace_item.description(),
+            Self::TakeItem(take_item) => take_item.description(),
+        }
+    }
 }

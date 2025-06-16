@@ -55,6 +55,9 @@ impl Identifier {
     pub fn parse(s: &str) -> Result<Self, error::Application> {
         s.parse()
     }
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl FromStr for Identifier {
@@ -78,6 +81,9 @@ pub struct Title(String);
 impl Title {
     pub fn parse(s: &str) -> Result<Self, error::Application> {
         s.parse()
+    }
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 

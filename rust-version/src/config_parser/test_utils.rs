@@ -18,8 +18,8 @@ pub mod data {
     use crate::{
         config_parser::types::{CharacterMap, ItemMap, ResponseMap},
         world::{
-            Action, ActionMap, ChangeRoom, Character, DialogueMap, GiveItem, Item, ReplaceItem,
-            Response, Room, RoomMap, TakeItem,
+            Action, ActionMap, ChangeRoom, Character, Dialogue, DialogueMap, GiveItem, Item,
+            ReplaceItem, Requirement, Response, Room, RoomMap, TakeItem,
         },
     };
 
@@ -40,7 +40,7 @@ pub mod data {
         ])
     }
 
-    pub fn response_map() -> ResponseMap {
+    pub fn response_map(action_map: &ActionMap) -> ResponseMap {
         ResponseMap::from([
             (
                 i("goodbye"),
@@ -60,24 +60,25 @@ pub mod data {
                         .build(),
                 ),
             ),
-            // (
-            //     "chirp".parse().unwrap(),
-            //     Rc::new(
-            //         Response::builder()
-            //             .text("The bird chatters melodiously; chirp, chirp!".into())
-            //             .requires(vec![])
-            //             .build(),
-            //     ),
-            // ),
-            // (
-            //     "curious".parse().unwrap(),
-            //     Rc::new(
-            //         Response::builder()
-            //             .text("That's a shiny ring! May I hold it?".into())
-            //             .requires(vec![])
-            //             .build(),
-            //     ),
-            // ),
+            (
+                "im_sorry".parse().unwrap(),
+                Rc::new(
+                    Response::builder()
+                        .text("No, I don't I do...".into())
+                        .requires(vec![])
+                        .build(),
+                ),
+            ),
+            (
+                "im_sorry".parse().unwrap(),
+                Rc::new(
+                    Response::builder()
+                        .text("Well, one drink couldn't hurt!".into())
+                        .requires(vec![])
+                        .triggers(action_map.get(&i("robbed")).unwrap().clone())
+                        .build(),
+                ),
+            ),
         ])
     }
 
@@ -167,14 +168,7 @@ pub mod data {
         ])
     }
 
-    /*
-    TODO! cleanup
-    let actions = parse_actions(ini.iter(), &rooms, &items)?;
-    let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms)?;
-    */
-    #[allow(dead_code, unused_variables)]
     pub fn action_map(room_map: &RoomMap, item_map: &ItemMap) -> ActionMap {
-        // TODO! ReplaceItem, TakeItem, ChangeRoom
         ActionMap::from([(
             i("open_chest"),
             Rc::new(Action::GiveItem(
@@ -193,7 +187,7 @@ pub mod data {
                 ReplaceItem::builder()
                     .name(i("look_closer"))
                     .description("You lean in to see what's inside the vase. Then out of no where a monkey snatches your apple knocking you over. You tumble into the bookshelf, only for the key to fall right into your hands!".into())
-                    .original(item_map.get(&i("apple")).unwrap().clone())
+                    .original(item_map.get(&i("half_eaten_apple")).unwrap().clone())
                     .replacement(item_map.get(&i("key")).unwrap().clone())
                     .build()
             )),
@@ -215,20 +209,96 @@ pub mod data {
                     ChangeRoom::builder()
                         .name(i("pull_lever"))
                         .description("You insert the lever into the slot and pull it back. Two hefty ropes snap and the barn doors slam shut! It's dark in here!".into())
-                        .required(item_map.get(&i("pull_lever")).unwrap().clone())
+                        .required(item_map.get(&i("lever")).unwrap().clone())
                         .room(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())
                         .build()
                 )
             )
         )])
     }
-    // TODO! Implement this!
-    #[allow(dead_code, unused_variables)]
+
     pub fn dialogue_map(
         response_map: &ResponseMap,
         item_map: &ItemMap,
         room_map: &RoomMap,
     ) -> DialogueMap {
-        todo!()
+        DialogueMap::from([
+            (
+                i("hello"),
+                HashMap::from([
+                    (
+                        None,
+                        Rc::new(
+                            Dialogue::builder()
+                                .text("Hiya stranger!".into())
+                                .responses(vec![
+                                    response_map.get(&i("hello")).unwrap().clone(),
+                                    response_map.get(&i("goodbye")).unwrap().clone(),
+                                ])
+                                .requires(vec![])
+                                .build(),
+                        ),
+                    ),
+                    (
+                        Some(i("scared")),
+                        Rc::new(
+                            Dialogue::builder()
+                                .text("Who goes there? I can't see ya, but I can smell ya!".into())
+                                .responses(vec![])
+                                .requires(vec![])
+                                .build(),
+                        ),
+                    ),
+                ]),
+            ),
+            (
+                i("curious"),
+                HashMap::from([(
+                    None,
+                    Rc::new(
+                        Dialogue::builder()
+                            .text("Hey, I remember you from somewhere -long pause- yeah, I we used to be neighbors! Remember the guy with the loud drunk guy who was always screaming at kids?".into())
+                            .responses(vec![
+                                response_map.get(&i("im_sorry")).unwrap().clone(),
+                            ])
+                            .requires(vec![Rc::new(Requirement::HasItem(
+                                item_map.get(&i("ring")).unwrap().clone(),
+                            ))])
+                            .build(),
+                    ),
+                )]),
+            ),
+            (
+                i("trick"),
+                HashMap::from([(
+                    None,
+                    Rc::new(
+                        Dialogue::builder()
+                            .text("Don't worry buddy! We all forget things. Hey, how about a drink for old times sake?".into())
+                            .responses(vec![
+                                response_map.get(&i("sure")).unwrap().clone(),
+                            ])
+                            .requires(vec![Rc::new(Requirement::HasItem(
+                                item_map.get(&i("ring")).unwrap().clone(),
+                            ))])
+                            .build(),
+                    ),
+                )]),
+            ),
+            (
+                i("chirp"),
+                HashMap::from([(
+                    None,
+                    Rc::new(
+                        Dialogue::builder()
+                            .text("The bird chatters melodiously; chirp, chirp!".into())
+                            .responses(vec![
+                            ])
+                            .requires(vec![])
+                            .build(),
+                    ),
+                )]),
+            ),
+        ])
     }
 }

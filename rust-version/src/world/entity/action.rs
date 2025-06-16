@@ -14,7 +14,6 @@ macro_rules! define_action {
             $($field:ident : $type:ty),* $(,)?
         }
     ) => {
-        #[allow(dead_code)]
         #[derive(Getters, Builder, Debug, PartialEq, Eq)]
         pub struct $name {
             name: Identifier,

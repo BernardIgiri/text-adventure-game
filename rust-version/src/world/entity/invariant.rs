@@ -42,11 +42,12 @@ impl TryInto<Title> for EntityName {
     }
 }
 
-// Valid RX will not panic
-#[allow(clippy::unwrap_used)]
-static IDENTIFIER_RX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-z_0-9\-]+$").unwrap());
-#[allow(clippy::unwrap_used)]
-static TITLE_RX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Z]{1,1}[A-Za-z_]+$").unwrap());
+#[allow(clippy::expect_used)]
+static IDENTIFIER_RX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-z_0-9\-]+$").expect("Valid Rx"));
+#[allow(clippy::expect_used)]
+static TITLE_RX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[A-Z]{1,1}[A-Za-z_]+$").expect("ValidRx"));
 
 #[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash)]
 pub struct Identifier(String);

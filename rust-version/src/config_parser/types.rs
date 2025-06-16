@@ -1,6 +1,5 @@
 use std::{collections::HashMap, rc::Rc};
 
-#[allow(unused_imports)]
 pub use crate::world::{ActionMap, DialogueMap, RoomMap};
 use crate::world::{Character, Identifier, Item, Response, Room, Title};
 

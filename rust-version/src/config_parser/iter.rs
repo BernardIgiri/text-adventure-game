@@ -117,9 +117,10 @@ pub trait RequireProperty {
 impl RequireProperty for Properties {
     fn require(&self, prop: &'static str, record: &Record) -> Result<&str, error::Application> {
         self.get(prop).ok_or_else(|| error::PropertyNotFound {
-            // It should be impossible to get here without a valid record.section
-            #[allow(clippy::unwrap_used)]
-            entity: EntitySection::from_str(record.section).unwrap().into(),
+            #[allow(clippy::expect_used)]
+            entity: EntitySection::from_str(record.section)
+                .expect("Valid record sections should already be established by now!")
+                .into(),
             property: prop,
             id: record.qualified_name.into(),
         })

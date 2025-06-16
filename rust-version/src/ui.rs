@@ -267,7 +267,6 @@ impl UI {
 
         self.siv.add_fullscreen_layer(layout);
         self.siv.run();
-        #[allow(clippy::unwrap_used)]
         if let Some(UIState {
             choice: UIChoice::InChat(choice),
             ..

@@ -252,10 +252,12 @@ impl<'a> GameState<'a> {
             Requirement::HasItem(needed_item) => self.inventory.contains(needed_item),
             Requirement::DoesNotHave(needed_item) => !self.inventory.contains(needed_item),
             Requirement::RoomVariant(expected_room) => {
-                let name = expected_room.name();
+                let expected_name = expected_room.name();
                 let expected_variant = expected_room.variant();
-                match self.active_room_variants.get(name) {
-                    None => expected_variant.is_none(), // No entry in map
+                // it's easier to read this way
+                #[allow(clippy::option_if_let_else)]
+                match self.active_room_variants.get(expected_name) {
+                    None => expected_variant.is_none(),
                     Some(active_variant) => active_variant == expected_variant,
                 }
             }

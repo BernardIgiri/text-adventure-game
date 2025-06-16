@@ -4,3 +4,5 @@
 // Action descriptions must be displayed
 
 // Save game option?
+// Add ability to look at inventory
+// Remove items from rooms, they serve no purpose

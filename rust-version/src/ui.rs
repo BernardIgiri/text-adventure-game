@@ -1,15 +1,9 @@
-use core::panic;
-use std::{
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
-};
-
+use convert_case::{Case, Casing};
 use cursive::{
     align::HAlign,
     theme::{BaseColor, BorderStyle, Color, Effect, PaletteColor, Style, Theme},
     utils::{markup::StyledString, span::SpannedString},
-    view::{IntoBoxedView, Nameable, Resizable},
+    view::{IntoBoxedView, Resizable},
     views::{Button, DummyView, LinearLayout, SelectView, TextView},
     Cursive, CursiveExt,
 };
@@ -112,66 +106,31 @@ impl UI {
     }
 
     pub fn roll_credits(&mut self, title: &str, credits: &str) {
-        let lines: Vec<String> = credits.lines().map(|s| s.to_string()).collect();
-        let visible_height = 10; // How many lines to show at a time
-        let scroll_pos = Arc::new(Mutex::new(0));
-
         let mut title_str = StyledString::new();
         title_str.append_styled(
             title,
             Style::from(Color::Light(BaseColor::Red)).combine(Effect::Bold),
         );
-        title_str.append_styled(
-            "Press Q at anytime to quit.",
-            Style::from(Color::Dark(BaseColor::Blue)),
-        );
+        let title_view = TextView::new(title_str).h_align(HAlign::Center);
 
-        let title_view = TextView::new(title_str).h_align(cursive::align::HAlign::Center);
-        let scrolling = TextView::new("")
-            .h_align(cursive::align::HAlign::Center)
-            .with_name("credits");
+        let mut credits_str = StyledString::new();
+        credits_str.append_plain(credits);
+        let credits_view = TextView::new(credits_str).h_align(HAlign::Center);
+
+        let pause = pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
+            .child(DummyView.full_height())
+            .weight(1)
             .child(title_view)
-            .child(scrolling.full_height());
-
+            .child(DummyView.fixed_height(2))
+            .child(credits_view)
+            .child(DummyView.fixed_height(2))
+            .child(pause)
+            .child(DummyView.full_height())
+            .weight(1)
+            .full_width();
         self.siv.add_fullscreen_layer(layout);
-
-        let sink = self.siv.cb_sink().clone();
-        let scroll_lines = lines;
-        let scroll_pos_clone = scroll_pos;
-
-        thread::spawn(move || {
-            loop {
-                {
-                    // Necessary for some reason?
-                    #[allow(clippy::unwrap_used)]
-                    let mut pos = scroll_pos_clone.lock().unwrap();
-                    if *pos + visible_height > scroll_lines.len() {
-                        break;
-                    }
-                    let window =
-                        &scroll_lines[*pos..(*pos + visible_height).min(scroll_lines.len())];
-                    let mut styled = StyledString::new();
-                    for line in window {
-                        styled.append_plain(line);
-                        styled.append_plain("\n");
-                    }
-
-                    let _ = sink.send(Box::new(move |s| {
-                        s.call_on_name("credits", |view: &mut TextView| {
-                            view.set_content(styled.clone());
-                        });
-                    }));
-                    *pos += 1;
-                }
-                thread::sleep(Duration::from_millis(100));
-            }
-            let _ = sink.send(Box::new(|s| {
-                s.add_layer(TextView::new("Press any key to continue...").full_screen());
-            }));
-        });
-
         self.siv.run();
     }
 
@@ -190,7 +149,7 @@ impl UI {
         if !items.is_empty() {
             body.append_styled("There are things here:\n", Effect::Bold);
             for item in items {
-                body.append_plain(format!("- {}\n", item));
+                body.append_plain(format!("- {}\n", item.to_case(Case::Sentence)));
             }
             body.append_plain("\n");
         }
@@ -198,7 +157,7 @@ impl UI {
         if !characters.is_empty() {
             body.append_styled("There are people here:\n", Effect::Bold);
             for name in characters {
-                body.append_plain(format!("- {}\n", name));
+                body.append_plain(format!("- {}\n", name.to_case(Case::Title)));
             }
             body.append_plain("\n");
             menu.add_item("Talk", RoomChoice::Chat);
@@ -211,10 +170,10 @@ impl UI {
         if !exits.is_empty() {
             body.append_styled("Your exits are:\n", Effect::Bold);
             for exit in exits {
-                body.append_plain(format!("- {}\n", exit));
+                body.append_plain(format!("- {}\n", exit.to_case(Case::Title)));
             }
             body.append_plain("\n");
-            menu.add_item("Leave", RoomChoice::Leave);
+            menu.add_item("Go somewhere else", RoomChoice::Leave);
         }
 
         body.append_plain("What would you like to do?");
@@ -244,7 +203,7 @@ impl UI {
         }
     }
 
-    pub fn present_chat_select(
+    pub fn present_chat_targets(
         &mut self,
         room_name: &str,
         room_description: &str,
@@ -254,7 +213,7 @@ impl UI {
         body.append_plain("Who will you talk to?");
         let mut menu = SelectView::<StartChatChoice>::new();
         for (i, choice) in characters.iter().enumerate() {
-            menu.add_item(choice, StartChatChoice::TalkTo(i));
+            menu.add_item(choice.to_case(Case::Title), StartChatChoice::TalkTo(i));
         }
         menu.set_on_submit(|siv, selected| {
             siv.with_user_data(|data: &mut UIState| {
@@ -297,7 +256,7 @@ impl UI {
             });
             siv.quit();
         });
-        menu.add_item("Leave", ChatChoice::Leave);
+        menu.add_item("Nothing", ChatChoice::Leave);
 
         let mut body = StyledString::new();
         body.append_plain(dialogue);
@@ -330,7 +289,7 @@ impl UI {
         body.append_plain("What will you do?");
         let mut menu = SelectView::<InteractionChoice>::new();
         for (i, choice) in actions.iter().enumerate() {
-            menu.add_item(choice, InteractionChoice::Do(i));
+            menu.add_item(choice.to_case(Case::Sentence), InteractionChoice::Do(i));
         }
         menu.set_on_submit(|siv, selected| {
             siv.with_user_data(|data: &mut UIState| {
@@ -356,9 +315,9 @@ impl UI {
         }
     }
 
-    pub fn present_action(&mut self, room_name: &str, action_description: &str) {
-        let (title, body) = prompt_header(room_name, action_description);
-        let body_view = TextView::new(body).h_align(HAlign::Left);
+    pub fn present_action(&mut self, action_name: &str, action_description: &str) {
+        let (title, body) = prompt_header(&action_name.to_case(Case::Title), action_description);
+        let body_view = TextView::new(body).h_align(HAlign::Center);
         let pause = pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
@@ -392,7 +351,7 @@ impl UI {
         body.append_plain("Which way will you go?");
         let mut menu = SelectView::<LeaveChoice>::new();
         for (i, choice) in exits.iter().enumerate() {
-            menu.add_item(choice, LeaveChoice::GoTo(i));
+            menu.add_item(choice.to_case(Case::Title), LeaveChoice::GoTo(i));
         }
         menu.set_on_submit(|siv, selected| {
             siv.with_user_data(|data: &mut UIState| {

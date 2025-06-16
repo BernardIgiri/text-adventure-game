@@ -254,12 +254,97 @@ impl<'a> GameState<'a> {
             Requirement::RoomVariant(expected_room) => {
                 let name = expected_room.name();
                 let expected_variant = expected_room.variant();
-
                 match self.active_room_variants.get(name) {
                     None => expected_variant.is_none(), // No entry in map
                     Some(active_variant) => active_variant == expected_variant,
                 }
             }
         }
+    }
+}
+
+// Allowed in tests
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+    use std::rc::Rc;
+
+    use super::*;
+
+    fn make_room(name: Title, variant: Option<Identifier>) -> Rc<Room> {
+        Rc::new(
+            Room::builder()
+                .name(name)
+                .maybe_variant(variant)
+                .description("Test".into())
+                .items(Vec::new())
+                .characters(Vec::new())
+                .exits(HashMap::new())
+                .actions(Vec::new())
+                .build(),
+        )
+    }
+
+    #[test]
+    fn test_room_variant_requirement_met() {
+        let room_name = "Barn".parse::<Title>().unwrap();
+        let variant_name = "drained".parse::<Identifier>().unwrap();
+        let title = GameTitle::new("".into(), "".into(), "".into(), room_name.clone());
+
+        let mut rooms = RoomMap::new();
+        let mut inner = HashMap::new();
+        inner.insert(None, make_room(room_name.clone(), None));
+        inner.insert(
+            Some(variant_name.clone()),
+            make_room(room_name.clone(), Some(variant_name.clone())),
+        );
+        rooms.insert(room_name.clone(), inner);
+        let world = World::try_new(
+            title,
+            HashMap::new(),
+            rooms,
+            HashMap::new(),
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap();
+
+        let title = GameTitle::new("".into(), "".into(), "".into(), "Barn".parse().unwrap());
+        let world = World::try_new(
+            title,
+            HashMap::new(),
+            HashMap::new(),
+            HashMap::new(),
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap();
+        let mut state = GameState::new(&world);
+        let req = Requirement::RoomVariant(make_room(room_name.clone(), None));
+        assert!(state.requirement_met(&req));
+
+        // Case 2: No entry in map, expected = Some(...) => false
+        let req =
+            Requirement::RoomVariant(make_room(room_name.clone(), Some(variant_name.clone())));
+        assert!(!state.requirement_met(&req));
+
+        // Case 3: Entry is None, expected = None => true
+        state.active_room_variants.insert(room_name.clone(), None);
+        let req = Requirement::RoomVariant(make_room(room_name.clone(), None));
+        assert!(state.requirement_met(&req));
+
+        // Case 4: Entry = Some(x), expected = Some(x) => true
+        let ident = variant_name.clone();
+        state
+            .active_room_variants
+            .insert(room_name.clone(), Some(ident));
+        let req = Requirement::RoomVariant(make_room(room_name.clone(), Some(variant_name)));
+        assert!(state.requirement_met(&req));
+
+        // Case 5: Entry = Some(x), expected = Some(y) ≠ x => false
+        let req =
+            Requirement::RoomVariant(make_room(room_name, Some("different".parse().unwrap())));
+        assert!(!state.requirement_met(&req));
     }
 }

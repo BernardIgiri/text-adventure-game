@@ -80,7 +80,7 @@ fn play() -> Result<(), error::Application> {
                     .iter()
                     .map(|v| v.name().to_string())
                     .collect::<Vec<_>>();
-                let choice = ui.present_chat_select(
+                let choice = ui.present_chat_targets(
                     room.name().as_str(),
                     room.description(),
                     &characters_names,
@@ -146,8 +146,7 @@ fn play() -> Result<(), error::Application> {
                 }
             }
             P::DoingAction(a) => {
-                let room = state.current_room();
-                ui.present_action(room.name().as_str(), a.description().as_str());
+                ui.present_action(a.name().as_str(), a.description().as_str());
                 P::Idle
             }
             P::Leaving => {
@@ -179,5 +178,6 @@ fn play() -> Result<(), error::Application> {
     if state.current_room().is_trap() {
         ui.roll_credits(world.title(), world.credits());
     }
+    dbg!(world);
     Ok(())
 }

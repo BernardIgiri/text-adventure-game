@@ -57,6 +57,23 @@ fn parse_one_requirement(
 
             Requirement::HasItem(item)
         }
+        "does_not_have" => {
+            let item_name = parts.next().ok_or_else(|| error::PropertyNotFound {
+                entity: entity_type,
+                property: "requires:does_not_have:<item_id>",
+                id: record.qualified_name.into(),
+            })?;
+            let item_name: Identifier = item_name.parse()?;
+            let item = item_map
+                .get(&item_name)
+                .cloned()
+                .ok_or_else(|| error::EntityNotFound {
+                    etype: "Item",
+                    id: item_name.to_string(),
+                })?;
+
+            Requirement::DoesNotHave(item)
+        }
         "room_variant" => {
             let qualified_name = parts.next().ok_or_else(|| error::PropertyNotFound {
                 entity: entity_type,
@@ -94,7 +111,7 @@ mod test {
     use crate::{
         config_parser::test_utils::{
             data::{item_map, room_map},
-            i,
+            i, t,
         },
         world::Requirement,
     };
@@ -126,6 +143,92 @@ mod test {
                 assert_eq!(item.name(), &i("key"));
             }
             _ => panic!("Expected HasItem requirement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_does_not_have_requirement() {
+        let items = item_map();
+        let rooms = room_map(&items, true);
+
+        let mut props = Properties::new();
+        props.insert("requires".to_string(), "does_not_have:key".to_string());
+
+        let record = Record {
+            section: "TestSection",
+            name: "test_name",
+            variant: None,
+            qualified_name: "TestSection:test_name",
+            properties: &props,
+        };
+
+        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        assert_that!(&result).has_length(1);
+
+        match &*result[0] {
+            Requirement::DoesNotHave(item) => {
+                assert_eq!(item.name(), &i("key"));
+            }
+            _ => panic!("Expected HasItem requirement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_room_variant_requirement() {
+        let items = item_map();
+        let rooms = room_map(&items, true);
+
+        let mut props = Properties::new();
+        props.insert(
+            "requires".to_string(),
+            "room_variant:WoodShed|closed".to_string(),
+        );
+
+        let record = Record {
+            section: "TestSection",
+            name: "test_name",
+            variant: None,
+            qualified_name: "TestSection:test_name",
+            properties: &props,
+        };
+
+        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        assert_that!(&result).has_length(1);
+
+        match &*result[0] {
+            Requirement::RoomVariant(room) => {
+                assert_eq!(room.name(), &t("WoodShed"));
+                assert_eq!(room.variant(), &Some(i("closed")));
+            }
+            _ => panic!("Expected RoomVariant requirement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_room_variant_default_requirement() {
+        let items = item_map();
+        let rooms = room_map(&items, true);
+
+        let mut props = Properties::new();
+        props.insert("requires".to_string(), "room_variant:WoodShed".to_string());
+
+        let record = Record {
+            section: "TestSection",
+            name: "test_name",
+            variant: None,
+            qualified_name: "TestSection:test_name",
+            properties: &props,
+        };
+
+        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        assert_that!(&result).has_length(1);
+
+        match &*result[0] {
+            Requirement::RoomVariant(room) => {
+                assert_eq!(room.name(), &t("WoodShed"));
+                assert_eq!(room.variant(), &None);
+            }
+            _ => panic!("Expected RoomVariant requirement"),
         }
     }
 

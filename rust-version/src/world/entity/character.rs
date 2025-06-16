@@ -48,6 +48,7 @@ impl<'a> DialogueRefs<'a> {
 pub enum Requirement {
     HasItem(Rc<Item>),
     RoomVariant(Rc<Room>),
+    DoesNotHave(Rc<Item>),
 }
 
 #[derive(Getters, Builder, Debug, PartialEq, Eq)]

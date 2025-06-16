@@ -219,10 +219,7 @@ impl<'a> GameState<'a> {
             .exits()
             .values()
             .map(|name| {
-                let variant = self
-                    .active_room_variants
-                    .get(name)
-                    .expect("The Room name data should be validated by this point.");
+                let variant = self.active_room_variants.get(name).unwrap_or(&None);
                 self.look_up_room(name, variant)
                     .expect("The Room variant data should be validated by this point.")
             })
@@ -252,17 +249,16 @@ impl<'a> GameState<'a> {
     }
     fn requirement_met(&self, requirement: &Requirement) -> bool {
         match requirement {
-            Requirement::HasItem(needed_item) => self
-                .inventory
-                .iter()
-                .any(|item| Rc::ptr_eq(item, needed_item)),
+            Requirement::HasItem(needed_item) => self.inventory.contains(needed_item),
+            Requirement::DoesNotHave(needed_item) => !self.inventory.contains(needed_item),
             Requirement::RoomVariant(expected_room) => {
-                let title = expected_room.name();
+                let name = expected_room.name();
                 let expected_variant = expected_room.variant();
-                self.active_room_variants
-                    .get(title)
-                    .map(|active_variant| active_variant == expected_variant)
-                    .unwrap_or(false)
+
+                match self.active_room_variants.get(name) {
+                    None => expected_variant.is_none(), // No entry in map
+                    Some(active_variant) => active_variant == expected_variant,
+                }
             }
         }
     }

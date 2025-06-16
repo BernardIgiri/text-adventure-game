@@ -22,11 +22,6 @@ pub struct Character {
 pub struct CharacterRefs<'a>(&'a Character);
 
 impl<'a> CharacterRefs<'a> {
-    // TODO: Use this
-    #[allow(dead_code)]
-    pub const fn get(&self) -> &Character {
-        self.0
-    }
     pub const fn start_dialogue(&self) -> &Identifier {
         &self.0.start_dialogue
     }
@@ -44,11 +39,6 @@ pub struct Dialogue {
 pub struct DialogueRefs<'a>(&'a Dialogue);
 
 impl<'a> DialogueRefs<'a> {
-    // TODO: Use this
-    #[allow(dead_code)]
-    pub const fn get(&self) -> &Dialogue {
-        self.0
-    }
     pub const fn responses(&self) -> &Vec<Rc<Response>> {
         &self.0.responses
     }
@@ -73,11 +63,6 @@ pub struct Response {
 pub struct ResponseRefs<'a>(&'a Response);
 
 impl<'a> ResponseRefs<'a> {
-    // TODO: Use this
-    #[allow(dead_code)]
-    pub const fn get(&self) -> &Response {
-        self.0
-    }
     pub const fn leads_to(&self) -> &Option<Identifier> {
         &self.0.leads_to
     }

@@ -23,8 +23,6 @@ pub struct Room {
 }
 
 impl Room {
-    // TODO: Use this
-    #[allow(dead_code)]
     pub fn exit_directions(&self) -> impl Iterator<Item = &Identifier> {
         self.exits.keys()
     }
@@ -37,11 +35,6 @@ impl Room {
 pub struct RoomRefs<'a>(&'a Room);
 
 impl<'a> RoomRefs<'a> {
-    // TODO: Use this
-    #[allow(dead_code)]
-    pub const fn get(&self) -> &Room {
-        self.0
-    }
     pub const fn exits(&self) -> &HashMap<Identifier, Title> {
         &self.0.exits
     }

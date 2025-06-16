@@ -309,17 +309,6 @@ mod test {
             Vec::new(),
         )
         .unwrap();
-
-        let title = GameTitle::new("".into(), "".into(), "".into(), "Barn".parse().unwrap());
-        let world = World::try_new(
-            title,
-            HashMap::new(),
-            HashMap::new(),
-            HashMap::new(),
-            Vec::new(),
-            Vec::new(),
-        )
-        .unwrap();
         let mut state = GameState::new(&world);
         let req = Requirement::RoomVariant(make_room(room_name.clone(), None));
         assert!(state.requirement_met(&req));

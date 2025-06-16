@@ -11,7 +11,7 @@ mod title;
 mod types;
 
 #[cfg(test)]
-mod test_utils;
+pub mod test_utils;
 
 use action::parse_actions;
 use character::parse_characters;

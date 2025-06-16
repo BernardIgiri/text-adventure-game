@@ -17,7 +17,10 @@ pub mod data {
 
     use crate::{
         config_parser::types::{CharacterMap, ItemMap, ResponseMap},
-        world::{Character, Item, Response, Room, RoomMap},
+        world::{
+            Action, ActionMap, ChangeRoom, Character, DialogueMap, GiveItem, Item, ReplaceItem,
+            Response, Room, RoomMap, TakeItem,
+        },
     };
 
     pub fn character_map() -> CharacterMap {
@@ -57,24 +60,24 @@ pub mod data {
                         .build(),
                 ),
             ),
-            (
-                "chirp".parse().unwrap(),
-                Rc::new(
-                    Response::builder()
-                        .text("The bird chatters melodiously; chirp, chirp!".into())
-                        .requires(vec![])
-                        .build(),
-                ),
-            ),
-            (
-                "curious".parse().unwrap(),
-                Rc::new(
-                    Response::builder()
-                        .text("That's a shiny ring! May I hold it?".into())
-                        .requires(vec![])
-                        .build(),
-                ),
-            ),
+            // (
+            //     "chirp".parse().unwrap(),
+            //     Rc::new(
+            //         Response::builder()
+            //             .text("The bird chatters melodiously; chirp, chirp!".into())
+            //             .requires(vec![])
+            //             .build(),
+            //     ),
+            // ),
+            // (
+            //     "curious".parse().unwrap(),
+            //     Rc::new(
+            //         Response::builder()
+            //             .text("That's a shiny ring! May I hold it?".into())
+            //             .requires(vec![])
+            //             .build(),
+            //     ),
+            // ),
         ])
     }
 
@@ -96,6 +99,13 @@ pub mod data {
             (
                 i("silver_coin"),
                 Rc::new(Item::new(i("silver_coin"), "I'm rich!".into())),
+            ),
+            (
+                i("half_eaten_apple"),
+                Rc::new(Item::new(
+                    i("half_eaten_apple"),
+                    "A half eaten brown apple.".into(),
+                )),
             ),
         ])
     }
@@ -157,10 +167,68 @@ pub mod data {
         ])
     }
 
-    // fn wood_shed() -> Room {
-    //     Room::builder()
-    //         .name("WoodShed".parse().unwrap())
-    //         .description("A dusty shed full of tools, lumber, and a giant table saw.".into())
-    //         .items()
-    // }
+    /*
+    TODO! cleanup
+    let actions = parse_actions(ini.iter(), &rooms, &items)?;
+    let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms)?;
+    */
+    #[allow(dead_code, unused_variables)]
+    pub fn action_map(room_map: &RoomMap, item_map: &ItemMap) -> ActionMap {
+        // TODO! ReplaceItem, TakeItem, ChangeRoom
+        ActionMap::from([(
+            i("open_chest"),
+            Rc::new(Action::GiveItem(
+                GiveItem::builder()
+                    .name(i("open_chest"))
+                    .description("You carefully open the chest with an intense curiosity!".into())
+                    .items(vec![
+                        item_map.get(&i("half_eaten_apple")).unwrap().clone(),
+                        item_map.get(&i("silver_coin")).unwrap().clone(),
+                    ])
+                    .build(),
+            )),
+        ), (
+            i("look_closer"),
+            Rc::new(Action::ReplaceItem(
+                ReplaceItem::builder()
+                    .name(i("look_closer"))
+                    .description("You lean in to see what's inside the vase. Then out of no where a monkey snatches your apple knocking you over. You tumble into the bookshelf, only for the key to fall right into your hands!".into())
+                    .original(item_map.get(&i("apple")).unwrap().clone())
+                    .replacement(item_map.get(&i("key")).unwrap().clone())
+                    .build()
+            )),
+        ), (
+            i("robbed"),
+            Rc::new(
+                Action::TakeItem(
+                    TakeItem::builder()
+                        .name(i("robbed"))
+                        .description("You wake up groggy laying in vomit. You pat youself down only to notice that your ring is missing!".into())
+                        .items(vec![item_map.get(&i("ring")).unwrap().clone()])
+                        .build()
+                )
+            )
+        ), (
+            i("pull_lever"),
+            Rc::new(
+                Action::ChangeRoom(
+                    ChangeRoom::builder()
+                        .name(i("pull_lever"))
+                        .description("You insert the lever into the slot and pull it back. Two hefty ropes snap and the barn doors slam shut! It's dark in here!".into())
+                        .required(item_map.get(&i("pull_lever")).unwrap().clone())
+                        .room(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())
+                        .build()
+                )
+            )
+        )])
+    }
+    // TODO! Implement this!
+    #[allow(dead_code, unused_variables)]
+    pub fn dialogue_map(
+        response_map: &ResponseMap,
+        item_map: &ItemMap,
+        room_map: &RoomMap,
+    ) -> DialogueMap {
+        todo!()
+    }
 }

@@ -33,11 +33,10 @@ fn play() -> Result<(), error::Application> {
     let args = Args::parse();
     let ini = preprocess_to_ini_from_file(args.file.as_path())
         .map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
-    let world = config_parser::parse(ini)?;
-    let mut state = GameState::new(&world);
+    let mut state = GameState::from_ini(ini)?;
     let mut player = Player::Idle;
     let mut ui = UI::new();
-    ui.greet(world.title(), world.greeting());
+    ui.greet(state.title(), state.greeting());
     while player != P::GameOver {
         player = match player {
             P::Idle => {
@@ -176,8 +175,7 @@ fn play() -> Result<(), error::Application> {
         }
     }
     if state.current_room().is_trap() {
-        ui.roll_credits(world.title(), world.credits());
+        ui.roll_credits(state.title(), state.credits());
     }
-    dbg!(world);
     Ok(())
 }

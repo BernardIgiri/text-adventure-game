@@ -847,24 +847,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-version"
-version = "0.1.0"
-dependencies = [
- "asserting",
- "bon",
- "clap",
- "convert_case 0.8.0",
- "cursive",
- "derive-getters",
- "derive-new",
- "derive_more",
- "regex",
- "rust-ini",
- "strum",
- "thiserror",
-]
-
-[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1015,6 +997,24 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "text-adventure-game"
+version = "0.1.0"
+dependencies = [
+ "asserting",
+ "bon",
+ "clap",
+ "convert_case 0.8.0",
+ "cursive",
+ "derive-getters",
+ "derive-new",
+ "derive_more",
+ "regex",
+ "rust-ini",
+ "strum",
+ "thiserror",
 ]
 
 [[package]]

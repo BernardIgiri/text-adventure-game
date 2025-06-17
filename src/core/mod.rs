@@ -1,5 +1,5 @@
 mod entity;
-mod game;
+mod state;
 mod world;
 
 use std::{collections::HashMap, rc::Rc};
@@ -8,7 +8,7 @@ pub use entity::{
     Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, Item, ReplaceItem,
     Requirement, Response, Room, TakeItem, Title,
 };
-pub use game::GameState;
+pub use state::GameState;
 pub use world::World;
 
 pub type ActionMap = HashMap<Identifier, Rc<Action>>;

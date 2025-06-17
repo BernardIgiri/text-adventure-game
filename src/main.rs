@@ -2,17 +2,17 @@
 #![warn(clippy::all, clippy::nursery)]
 
 mod config_parser;
+mod core;
 mod error;
 mod player;
 mod ui;
-mod world;
 
 use clap::Parser;
 use config_parser::preprocess_to_ini_from_file;
+use core::GameState;
 use player::Player;
 use std::path::PathBuf;
 use ui::*;
-use world::GameState;
 
 #[derive(Parser)]
 struct Args {

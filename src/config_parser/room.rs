@@ -3,8 +3,8 @@ use std::{collections::HashMap, rc::Rc};
 use ini::SectionIter;
 
 use crate::{
+    core::{Character, Identifier, Item, Room, Title},
     error,
-    world::{Character, Identifier, Item, Room, Title},
 };
 
 use super::{

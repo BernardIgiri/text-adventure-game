@@ -7,8 +7,8 @@ use crate::{
         iter::{EntitySection, RequireProperty, SectionRecordIter},
         requirement::parse_requirements,
     },
+    core::{Identifier, Response},
     error,
-    world::{Identifier, Response},
 };
 
 use super::types::{ActionMap, ItemMap, ResponseMap, RoomMap};

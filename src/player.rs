@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::world::{Action, Character, Dialogue};
+use crate::core::{Action, Character, Dialogue};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Player {

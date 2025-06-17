@@ -3,8 +3,8 @@ use std::rc::Rc;
 use ini::SectionIter;
 
 use crate::{
+    core::{Identifier, Item},
     error,
-    world::{Identifier, Item},
 };
 
 use super::{

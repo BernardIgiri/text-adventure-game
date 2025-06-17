@@ -1,6 +1,6 @@
 use ini::Ini;
 
-use crate::{error, world::GameTitle};
+use crate::{core::GameTitle, error};
 
 pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
     let top_level = ini

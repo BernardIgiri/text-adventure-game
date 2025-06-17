@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
-pub use crate::world::{ActionMap, DialogueMap, RoomMap};
-use crate::world::{Character, Identifier, Item, Response, Room, Title};
+pub use crate::core::{ActionMap, DialogueMap, RoomMap};
+use crate::core::{Character, Identifier, Item, Response, Room, Title};
 
 pub type CharacterMap = HashMap<Title, Rc<Character>>;
 pub type ResponseMap = HashMap<Identifier, Rc<Response>>;

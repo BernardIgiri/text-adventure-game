@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::{
+    core::{Identifier, Requirement},
     error,
-    world::{Identifier, Requirement},
 };
 
 use super::{
@@ -113,7 +113,7 @@ mod test {
             data::{item_map, room_map},
             i, t,
         },
-        world::Requirement,
+        core::Requirement,
     };
 
     use super::*;

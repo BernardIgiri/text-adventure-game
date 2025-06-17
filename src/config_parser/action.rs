@@ -7,8 +7,8 @@ use crate::{
         iter::{EntitySection, SectionRecordIter},
         types::RoomVariant,
     },
+    core::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
     error,
-    world::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
 };
 
 use super::{
@@ -218,7 +218,7 @@ mod test {
             data::{item_map, room_map},
             i, t,
         },
-        world::Action,
+        core::Action,
     };
 
     use super::parse_actions;

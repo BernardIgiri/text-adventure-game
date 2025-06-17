@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use ini::SectionIter;
 
-use crate::{error, world::Character};
+use crate::{core::Character, error};
 
 use super::{
     iter::{EntitySection, RequireProperty, SectionRecordIter},

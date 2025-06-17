@@ -3,8 +3,8 @@ use std::rc::Rc;
 use ini::SectionIter;
 
 use crate::{
+    core::{Dialogue, Response},
     error,
-    world::{Dialogue, Response},
 };
 
 use super::{
@@ -63,7 +63,7 @@ mod test {
             data::{action_map, item_map, response_map, room_map},
             i, t,
         },
-        world::Requirement,
+        core::Requirement,
     };
 
     use super::*;

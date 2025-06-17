@@ -183,7 +183,7 @@ mod test {
     use std::collections::HashMap;
     use std::rc::Rc;
 
-    use crate::world::RoomMap;
+    use crate::core::RoomMap;
 
     use super::*;
 

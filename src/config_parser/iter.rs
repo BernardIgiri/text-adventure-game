@@ -3,8 +3,8 @@ use std::str::FromStr;
 use strum::{EnumIter, EnumString, IntoStaticStr};
 
 use crate::{
+    core::{Identifier, Title},
     error,
-    world::{Identifier, Title},
 };
 
 #[derive(IntoStaticStr, EnumString, EnumIter, Hash, Debug, PartialEq, Eq, Clone, Copy)]

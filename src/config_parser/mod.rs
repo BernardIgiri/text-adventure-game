@@ -22,7 +22,7 @@ use response::parse_responses;
 use room::parse_rooms;
 use title::parse_title;
 
-use crate::{error, world::World};
+use crate::{core::World, error};
 
 pub use preprocessor::*;
 

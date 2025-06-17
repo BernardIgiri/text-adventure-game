@@ -1,7 +1,7 @@
 // Allowed in Tests
 #![allow(clippy::unwrap_used)]
 
-use crate::world::{Identifier, Title};
+use crate::core::{Identifier, Title};
 
 pub fn t(s: &str) -> Title {
     s.parse().unwrap()
@@ -17,7 +17,7 @@ pub mod data {
 
     use crate::{
         config_parser::types::{CharacterMap, ItemMap, ResponseMap},
-        world::{
+        core::{
             Action, ActionMap, ChangeRoom, Character, Dialogue, DialogueMap, GiveItem, Item,
             ReplaceItem, Requirement, Response, Room, RoomMap, TakeItem,
         },

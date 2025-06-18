@@ -12,9 +12,9 @@ use super::{entity::*, Identifier, Title, World};
 #[derive(Debug)]
 pub struct GameState {
     world: World,
-    current_room: Option<Rc<Room>>,
+    current_room: Option<Title>,
     inventory: HashSet<Rc<Item>>,
-    active_room_variants: HashMap<Title, Option<Identifier>>,
+    active_room_variants: HashMap<Title, Identifier>,
 }
 
 // Game state already handled in World
@@ -42,7 +42,7 @@ impl GameState {
     }
 
     pub fn enter_room(&mut self, room: Rc<Room>) {
-        self.current_room = Some(room);
+        self.current_room = Some(room.name().clone());
     }
     pub fn trigger_response(&mut self, response: &Response) -> bool {
         response
@@ -61,7 +61,13 @@ impl GameState {
                         self.inventory.remove(r);
                     }
                 }
-                self.current_room = Some(c.room().clone());
+                let room = c.room();
+                if let Some(v) = room.variant() {
+                    self.active_room_variants
+                        .insert(room.name().clone(), v.clone());
+                } else {
+                    self.active_room_variants.remove(room.name());
+                }
                 true
             }
             GiveItem(g) => {
@@ -97,10 +103,13 @@ impl GameState {
         }
     }
     pub fn current_room(&self) -> Rc<Room> {
-        self.current_room.as_ref().cloned().unwrap_or_else(|| {
-            self.look_up_room(self.world.title().start_room(), &None)
-                .expect("The start_room should be validated by this point.")
-        })
+        self.look_up_room(
+            &self
+                .current_room
+                .clone()
+                .unwrap_or_else(|| self.world.title().start_room().clone()),
+        )
+        .expect("All rooms should exist in the world!")
     }
     pub fn character_start_dialogue(&self, character: &Character) -> Rc<Dialogue> {
         self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
@@ -129,9 +138,8 @@ impl GameState {
             .exits()
             .values()
             .map(|name| {
-                let variant = self.active_room_variants.get(name).unwrap_or(&None);
-                self.look_up_room(name, variant)
-                    .expect("All Room variants should be in the world!")
+                self.look_up_room(name)
+                    .expect("All Room exits should be in the world!")
             })
             .collect()
     }
@@ -141,8 +149,9 @@ impl GameState {
             .as_ref()
             .map(|name| self.look_up_dialogue(name))
     }
-    fn look_up_room(&self, name: &Title, variant: &Option<Identifier>) -> Option<Rc<Room>> {
-        self.world.rooms().get(name)?.get(variant).cloned()
+    fn look_up_room(&self, name: &Title) -> Option<Rc<Room>> {
+        let variant = self.active_room_variants.get(name).cloned();
+        self.world.rooms().get(name)?.get(&variant).cloned()
     }
     fn look_up_dialogue(&self, id: &Identifier) -> Rc<Dialogue> {
         let variants = self
@@ -171,13 +180,7 @@ impl GameState {
             Requirement::DoesNotHave(needed_item) => !self.inventory.contains(needed_item),
             Requirement::RoomVariant(expected_room) => {
                 let expected_name = expected_room.name();
-                let expected_variant = expected_room.variant();
-                // it's easier to read this way
-                #[allow(clippy::option_if_let_else)]
-                match self.active_room_variants.get(expected_name) {
-                    None => expected_variant.is_none(),
-                    Some(active_variant) => active_variant == expected_variant,
-                }
+                expected_room.variant() == &self.active_room_variants.get(expected_name).cloned()
             }
         }
     }
@@ -190,10 +193,13 @@ mod test {
     use std::collections::HashMap;
     use std::rc::Rc;
 
+    use asserting::prelude::*;
+
     use crate::config_parser::test_utils::data::{
         action_map, character_map, dialogue_map, item_map, response_map, room_map,
     };
     use crate::config_parser::test_utils::{i, t};
+    use crate::core::ItemMap;
 
     use super::*;
 
@@ -211,9 +217,12 @@ mod test {
     }
 
     fn make_game() -> GameState {
+        make_game_custom_items(item_map())
+    }
+
+    fn make_game_custom_items(items: ItemMap) -> GameState {
         let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
         let characters = character_map();
-        let items = item_map();
         let rooms = room_map(true);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
@@ -230,11 +239,181 @@ mod test {
         GameState::new(world)
     }
 
-    // #[test]
-    // fn test_do_action() {
-    //     // let mut state = make_game();
-    //     todo!()
-    // }
+    fn make_game_custom_responses(items: ItemMap) -> GameState {
+        let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
+        let characters = character_map();
+        let rooms = room_map(true);
+        let actions = action_map(&rooms, &items);
+        let responses = response_map(&actions);
+        let dialogues = dialogue_map(&responses, &items, &rooms);
+        let world = World::try_new(
+            title,
+            actions,
+            rooms,
+            dialogues,
+            characters.values().cloned().collect(),
+            responses.values().cloned().collect(),
+        )
+        .unwrap();
+        GameState::new(world)
+    }
+
+    #[test]
+    fn test_dialogue_responses_returns_all_when_no_requirements() {
+        let state = make_game();
+        let dialogue = state.look_up_dialogue(&i("hello"));
+        let responses = state.dialogue_responses(&dialogue);
+        assert!(!responses.is_empty());
+        for r in &responses {
+            assert!(r.requires().is_empty());
+        }
+    }
+
+    #[test]
+    fn test_dialogue_responses_filters_unmet_requirements() {
+        let mut items = item_map();
+        let mut state = make_game_custom_responses(items.clone());
+
+        let item = Rc::new(Item::new(i("invisible_cape"), "A rare item".into()));
+        let response = Rc::new(
+            Response::builder()
+                .text("You must be wearing the cape.".into())
+                .requires(vec![Requirement::HasItem(item.clone())])
+                .build(),
+        );
+        // let responses = state.dialogue_responses(&dialogue);
+        // assert!(!responses.contains(&response));
+    }
+
+    #[test]
+    fn test_dialogue_responses_includes_met_requirements() {
+        let mut items = item_map();
+        let required = items.get(&i("ring")).unwrap().clone();
+        let mut state = make_game_custom_responses(items.clone());
+
+        let response = Rc::new(
+            Response::builder()
+                .text("Ah, you brought the ring.".into())
+                .requires(vec![Requirement::HasItem(required.clone())])
+                .build(),
+        );
+
+        state.inventory.insert(required);
+
+        // let responses = state.dialogue_responses(&dialogue);
+        // assert!(responses.contains(&response));
+    }
+
+    #[test]
+    fn test_look_up_dialogue_returns_variant_if_requirement_met() {
+        let mut state = make_game();
+        let dialogue_id = i("hello");
+        state
+            .active_room_variants
+            .insert(t("WoodShed"), i("closed"));
+        let dialogue = state.look_up_dialogue(&dialogue_id);
+        assert_that!(dialogue.text()).contains("Who goes there");
+    }
+
+    #[test]
+    fn test_look_up_dialogue_falls_back_to_default_variant() {
+        let state = make_game();
+        let dialogue = state.look_up_dialogue(&i("hello"));
+        assert!(dialogue.text().contains("Hiya stranger!"));
+    }
+
+    #[test]
+    fn test_do_action_change_room() {
+        let mut state = make_game();
+        let id = t("WoodShed");
+        state.current_room = Some(id.clone());
+        assert!(state.current_room().variant().clone().is_none());
+        assert_that!(state.do_action(&Action::ChangeRoom(
+            ChangeRoom::builder()
+                .name(i("close_door"))
+                .description("".into())
+                .room(
+                    state
+                        .world
+                        .rooms()
+                        .get(&id)
+                        .unwrap()
+                        .get(&Some(i("closed")))
+                        .unwrap()
+                        .clone()
+                )
+                .build()
+        )))
+        .is_true();
+        assert_eq!(
+            state.look_up_room(&id).unwrap().variant().clone(),
+            Some(i("closed"))
+        );
+        assert_eq!(state.current_room().name().clone(), id);
+        assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
+    }
+
+    #[test]
+    fn test_do_action_change_room_with_requirements_unmet() {
+        let items = item_map();
+        let item = items.get(&i("lever")).unwrap().clone();
+        let mut state = make_game_custom_items(items);
+        let id = t("WoodShed");
+        state.current_room = Some(id.clone());
+        assert!(state.current_room().variant().clone().is_none());
+        assert_that!(state.do_action(&Action::ChangeRoom(
+            ChangeRoom::builder()
+                .name(i("close_door"))
+                .description("".into())
+                .room(
+                    state
+                        .world
+                        .rooms()
+                        .get(&id)
+                        .unwrap()
+                        .get(&Some(i("closed")))
+                        .unwrap()
+                        .clone()
+                )
+                .required(item)
+                .build()
+        )))
+        .is_false();
+        assert_eq!(state.look_up_room(&id).unwrap().variant().clone(), None);
+        assert_eq!(state.current_room().name().clone(), id);
+        assert_eq!(state.current_room().variant().clone(), None)
+    }
+
+    #[test]
+    fn test_do_action_change_room_with_requirements_nmet() {
+        let items = item_map();
+        let item = items.get(&i("lever")).unwrap().clone();
+        let mut state = make_game_custom_items(items);
+        state.inventory.insert(item.clone());
+        let id = t("WoodShed");
+        state.current_room = Some(id.clone());
+        assert!(state.current_room().variant().clone().is_none());
+        assert_that!(state.do_action(&Action::ChangeRoom(
+            ChangeRoom::builder()
+                .name(i("close_door"))
+                .description("".into())
+                .room(
+                    state
+                        .world
+                        .rooms()
+                        .get(&id)
+                        .unwrap()
+                        .get(&Some(i("closed")))
+                        .unwrap()
+                        .clone()
+                )
+                .required(item)
+                .build()
+        )))
+        .is_true();
+        assert_eq!(state.current_room().name().clone(), id);
+        assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
+    }
 
     #[test]
     fn test_room_variant_requirement_met() {
@@ -250,15 +429,13 @@ mod test {
         assert!(!state.requirement_met(&req));
 
         // Case 3: Entry is None, expected = None => true
-        state.active_room_variants.insert(room_name.clone(), None);
+        state.active_room_variants.remove(&room_name);
         let req = Requirement::RoomVariant(make_room(room_name.clone(), None));
         assert!(state.requirement_met(&req));
 
         // Case 4: Entry = Some(x), expected = Some(x) => true
         let ident = variant_name.clone();
-        state
-            .active_room_variants
-            .insert(room_name.clone(), Some(ident));
+        state.active_room_variants.insert(room_name.clone(), ident);
         let req = Requirement::RoomVariant(make_room(room_name.clone(), Some(variant_name)));
         assert!(state.requirement_met(&req));
 

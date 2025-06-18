@@ -245,7 +245,7 @@ mod test {
     fn test_good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
         let actions = parse_actions(ini.iter(), &rooms, &items).unwrap();
 
         assert_that!(&actions)

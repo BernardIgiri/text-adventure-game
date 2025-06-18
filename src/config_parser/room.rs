@@ -3,19 +3,18 @@ use std::{collections::HashMap, rc::Rc};
 use ini::SectionIter;
 
 use crate::{
-    core::{Character, Identifier, Item, Room, Title},
+    core::{Character, Identifier, Room, Title},
     error,
 };
 
 use super::{
     iter::{EntitySection, ListProperty, RequireProperty, SectionRecordIter},
-    types::{CharacterMap, ItemMap, RoomMap},
+    types::{CharacterMap, RoomMap},
 };
 
 pub fn parse_rooms<'a>(
     ini_iter: SectionIter<'a>,
     character_map: &CharacterMap,
-    item_map: &ItemMap,
 ) -> Result<RoomMap, error::Application> {
     let mut map = RoomMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Room.into()) {
@@ -47,19 +46,6 @@ pub fn parse_rooms<'a>(
                 Ok((direction, room))
             })
             .collect::<Result<HashMap<Identifier, Title>, error::Application>>()?;
-        let items = record
-            .properties
-            .get_list("items")
-            .map(|item_name| {
-                Ok(item_map
-                    .get(&item_name.parse()?)
-                    .ok_or_else(|| error::EntityNotFound {
-                        etype: "Item",
-                        id: item_name.into(),
-                    })?
-                    .clone())
-            })
-            .collect::<Result<Vec<Rc<Item>>, error::Application>>()?;
         let characters = record
             .properties
             .get_list("characters")
@@ -86,7 +72,6 @@ pub fn parse_rooms<'a>(
                 .description(description.to_owned())
                 .exits(exits)
                 .actions(actions)
-                .items(items)
                 .characters(characters)
                 .build(),
         );
@@ -102,10 +87,7 @@ mod test {
     use asserting::prelude::*;
     use ini::Ini;
 
-    use crate::config_parser::test_utils::{
-        data::{character_map, item_map},
-        t,
-    };
+    use crate::config_parser::test_utils::{data::character_map, t};
 
     use super::parse_rooms;
 
@@ -118,7 +100,6 @@ mod test {
         [Room:DiningRoom]
         description=The aroma of freshly baked bread and mom's spicy fried chicken fills the air.
         exits=west:Study
-        items=key
 
         [Room:Patio]
         description=A beautiful sun lit, picket fenced, lawn, sprawls out to a lovely neighborhood wi- a bird just pooped on you!
@@ -137,7 +118,6 @@ mod test {
         [Room:DiningRoom]
         description=The aroma of freshly baked bread and mom's spicy fried chicken fills the air.
         exits=west:Study
-        items=key
 
         [Room:Patio]
         description=A beautiful sun lit, picket fenced, lawn, sprawls out to a lovely neighborhood wi- a bird just pooped on you!
@@ -148,9 +128,8 @@ mod test {
     #[test]
     fn test_good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
-        let items = item_map();
         let characters = character_map();
-        let rooms = parse_rooms(ini.iter(), &characters, &items).unwrap();
+        let rooms = parse_rooms(ini.iter(), &characters).unwrap();
         assert_that!(&rooms)
             .has_length(4)
             .contains_key(t("DiningRoom"))
@@ -161,9 +140,8 @@ mod test {
     #[test]
     fn test_bad_data() {
         let ini = Ini::load_from_str(BAD_DATA).unwrap();
-        let items = item_map();
         let characters = character_map();
-        let rooms = parse_rooms(ini.iter(), &characters, &items);
+        let rooms = parse_rooms(ini.iter(), &characters);
         assert_that!(rooms)
             .is_err()
             .extracting(|e| e.err().unwrap().to_string())

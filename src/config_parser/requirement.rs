@@ -120,7 +120,7 @@ mod test {
     #[test]
     fn test_parse_has_item_requirement() {
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
 
         let mut props = Properties::new();
         props.insert("requires".to_string(), "has_item:key".to_string());
@@ -147,7 +147,7 @@ mod test {
     #[test]
     fn test_parse_does_not_have_requirement() {
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
 
         let mut props = Properties::new();
         props.insert("requires".to_string(), "does_not_have:key".to_string());
@@ -174,7 +174,7 @@ mod test {
     #[test]
     fn test_parse_room_variant_requirement() {
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
 
         let mut props = Properties::new();
         props.insert(
@@ -205,7 +205,7 @@ mod test {
     #[test]
     fn test_parse_room_variant_default_requirement() {
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
 
         let mut props = Properties::new();
         props.insert("requires".to_string(), "room_variant:WoodShed".to_string());
@@ -233,7 +233,7 @@ mod test {
     #[test]
     fn test_parse_invalid_requirement_type() {
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
 
         let mut props = Properties::new();
         props.insert("requires".to_string(), "nonsense:value".to_string());

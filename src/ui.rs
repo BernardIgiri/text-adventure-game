@@ -138,21 +138,12 @@ impl UI {
         &mut self,
         room_name: &str,
         room_description: &str,
-        items: &[String],
         characters: &[String],
         exits: &[String],
         has_actions: bool,
     ) -> RoomChoice {
         let (title, mut body) = prompt_header(room_name, room_description);
         let mut menu = SelectView::<RoomChoice>::new();
-
-        if !items.is_empty() {
-            body.append_styled("There are things here:\n", Effect::Bold);
-            for item in items {
-                body.append_plain(format!("- {}\n", item.to_case(Case::Sentence)));
-            }
-            body.append_plain("\n");
-        }
 
         if !characters.is_empty() {
             body.append_styled("There are people here:\n", Effect::Bold);

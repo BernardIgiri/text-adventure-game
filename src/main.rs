@@ -41,11 +41,6 @@ fn play() -> Result<(), error::Application> {
         player = match player {
             P::Idle => {
                 let room = state.current_room();
-                let items = room
-                    .items()
-                    .iter()
-                    .map(|v| v.name().to_string())
-                    .collect::<Vec<_>>();
                 let characters = room
                     .characters()
                     .iter()
@@ -59,7 +54,6 @@ fn play() -> Result<(), error::Application> {
                 let choice = ui.present_room(
                     room.name().as_str(),
                     room.description(),
-                    &items,
                     &characters,
                     &exits,
                     actions,

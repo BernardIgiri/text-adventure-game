@@ -14,7 +14,6 @@ pub struct Room {
     name: Title,
     variant: Option<Identifier>,
     description: String,
-    items: Vec<Rc<Item>>,
     characters: Vec<Rc<Character>>,
     #[getter(skip)]
     exits: HashMap<Identifier, Title>,

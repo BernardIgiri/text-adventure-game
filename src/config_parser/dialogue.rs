@@ -111,7 +111,7 @@ mod test {
     fn parse_dialogue_sucessfully() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let items = item_map();
-        let rooms = room_map(&items, false);
+        let rooms = room_map(false);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms).unwrap();
@@ -161,7 +161,7 @@ mod test {
     fn parse_dialogue_missing_text() {
         let ini = Ini::load_from_str(BAD_DATA_MISSING_TEXT).unwrap();
         let items = item_map();
-        let rooms = room_map(&items, false);
+        let rooms = room_map(false);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);
@@ -178,7 +178,7 @@ mod test {
     fn parse_dialogue_bad_variant() {
         let ini = Ini::load_from_str(BAD_DATA_BAD_VARIANT).unwrap();
         let items = item_map();
-        let rooms = room_map(&items, false);
+        let rooms = room_map(false);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);
@@ -195,7 +195,7 @@ mod test {
     fn parse_dialogue_bad_requirement() {
         let ini = Ini::load_from_str(BAD_DATA_BAD_REQUIREMENT).unwrap();
         let items = item_map();
-        let rooms = room_map(&items, false);
+        let rooms = room_map(false);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);

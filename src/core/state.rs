@@ -139,7 +139,7 @@ impl GameState {
         ResponseRefs::new(response)
             .leads_to()
             .as_ref()
-            .and_then(|name| Some(self.look_up_dialogue(name)))
+            .map(|name| self.look_up_dialogue(name))
     }
     fn look_up_room(&self, name: &Title, variant: &Option<Identifier>) -> Option<Rc<Room>> {
         self.world.rooms().get(name)?.get(variant).cloned()
@@ -203,7 +203,6 @@ mod test {
                 .name(name)
                 .maybe_variant(variant)
                 .description("Test".into())
-                .items(Vec::new())
                 .characters(Vec::new())
                 .exits(HashMap::new())
                 .actions(Vec::new())
@@ -215,7 +214,7 @@ mod test {
         let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
         let characters = character_map();
         let items = item_map();
-        let rooms = room_map(&items, true);
+        let rooms = room_map(true);
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = dialogue_map(&responses, &items, &rooms);
@@ -233,7 +232,8 @@ mod test {
 
     #[test]
     fn test_do_action() {
-        let mut state = make_game();
+        // let mut state = make_game();
+        todo!()
     }
 
     #[test]

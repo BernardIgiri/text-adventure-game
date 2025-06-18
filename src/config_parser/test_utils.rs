@@ -111,12 +111,11 @@ pub mod data {
         ])
     }
 
-    pub fn room_map(items: &ItemMap, with_actions: bool) -> RoomMap {
+    pub fn room_map(with_actions: bool) -> RoomMap {
         let woodshed = Rc::new(
             Room::builder()
                 .name(t("WoodShed"))
                 .description("A dusty shed full of tools, lumber, and a giant table saw.".into())
-                .items(vec![items.get(&i("lever")).unwrap().clone()])
                 .characters(vec![])
                 .exits(HashMap::from([(i("north"), "Field".parse().unwrap())]))
                 .actions(if with_actions {
@@ -131,7 +130,6 @@ pub mod data {
                 .name(t("WoodShed"))
                 .variant(i("closed"))
                 .description("Its really dark and dusty in here.".into())
-                .items(vec![])
                 .characters(vec![])
                 .exits(HashMap::from([(
                     "north".parse().unwrap(),
@@ -144,7 +142,6 @@ pub mod data {
             Room::builder()
                 .name(t("Field"))
                 .description("A wide open grassy field.".into())
-                .items(vec![])
                 .characters(vec![])
                 .exits(HashMap::from([(
                     "north".parse().unwrap(),

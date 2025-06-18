@@ -32,7 +32,7 @@ pub struct Dialogue {
     text: String,
     #[getter(skip)]
     responses: Vec<Rc<Response>>,
-    requires: Vec<Rc<Requirement>>,
+    requires: Vec<Requirement>,
 }
 
 #[derive(new)]
@@ -57,7 +57,7 @@ pub struct Response {
     #[getter(skip)]
     leads_to: Option<Identifier>,
     triggers: Option<Rc<Action>>,
-    requires: Vec<Rc<Requirement>>,
+    requires: Vec<Requirement>,
 }
 
 #[derive(new)]

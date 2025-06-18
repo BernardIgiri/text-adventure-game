@@ -96,21 +96,16 @@ fn play() -> Result<(), error::Application> {
                     C::NoOne => P::Idle,
                 }
             }
-            P::ChatWith(c, d) => {
-                let (dialogue_text, responses) = d
-                    .or_else(|| state.character_initial_dialogue(&c))
-                    .map(|dialogue| {
-                        (
-                            Some(dialogue.text().clone()),
-                            state.dialogue_responses(&dialogue),
-                        )
-                    })
-                    .unwrap_or((None, Vec::new()));
-                let responses_text = responses
+            P::ChatWith(character, dialogue) => {
+                let dialogue =
+                    dialogue.unwrap_or_else(|| state.character_start_dialogue(&character));
+                let responses = state.dialogue_responses(&dialogue);
+                let response_text = responses
                     .iter()
                     .map(|v| v.text().to_string())
                     .collect::<Vec<_>>();
-                let choice = ui.present_chat(c.name().as_str(), &dialogue_text, &responses_text);
+                let choice =
+                    ui.present_chat(character.name().as_str(), dialogue.text(), &response_text);
                 use ChatChoice as C;
                 match choice {
                     C::RespondWith(i) => {
@@ -121,7 +116,7 @@ fn play() -> Result<(), error::Application> {
                         state.trigger_response(&response);
                         state
                             .response_reply(&response)
-                            .map_or(P::Idle, |d| P::ChatWith(c, Some(d)))
+                            .map_or(P::Idle, |d| P::ChatWith(character, Some(d)))
                     }
                     C::Leave => P::Idle,
                 }

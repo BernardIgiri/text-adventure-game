@@ -102,7 +102,7 @@ impl GameState {
                 .expect("The start_room should be validated by this point.")
         })
     }
-    pub fn character_initial_dialogue(&self, character: &Character) -> Option<Rc<Dialogue>> {
+    pub fn character_start_dialogue(&self, character: &Character) -> Rc<Dialogue> {
         self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
     }
     pub fn dialogue_responses(&self, dialogue: &Dialogue) -> Vec<Rc<Response>> {
@@ -120,7 +120,7 @@ impl GameState {
         RoomRefs::new(room)
             .actions()
             .iter()
-            .filter_map(|name| self.world.action().get(name))
+            .filter_map(|name| self.world.actions().get(name))
             .cloned()
             .collect()
     }
@@ -131,7 +131,7 @@ impl GameState {
             .map(|name| {
                 let variant = self.active_room_variants.get(name).unwrap_or(&None);
                 self.look_up_room(name, variant)
-                    .expect("The Room variant data should be validated by this point.")
+                    .expect("All Room variants should be in the world!")
             })
             .collect()
     }
@@ -139,15 +139,18 @@ impl GameState {
         ResponseRefs::new(response)
             .leads_to()
             .as_ref()
-            .and_then(|name| self.look_up_dialogue(name))
+            .and_then(|name| Some(self.look_up_dialogue(name)))
     }
     fn look_up_room(&self, name: &Title, variant: &Option<Identifier>) -> Option<Rc<Room>> {
-        self.world.room().get(name)?.get(variant).cloned()
+        self.world.rooms().get(name)?.get(variant).cloned()
     }
-    fn look_up_dialogue(&self, id: &Identifier) -> Option<Rc<Dialogue>> {
-        self.world
-            .dialog()
-            .get(id)?
+    fn look_up_dialogue(&self, id: &Identifier) -> Rc<Dialogue> {
+        let variants = self
+            .world
+            .dialogues()
+            .get(id)
+            .expect("All dialogue ids should be in the world!");
+        variants
             .values()
             .find(|dialogue| {
                 dialogue
@@ -155,7 +158,12 @@ impl GameState {
                     .iter()
                     .all(|req| self.requirement_met(req))
             })
-            .cloned()
+            .unwrap_or_else(|| {
+                variants
+                    .get(&None)
+                    .expect("All dialogues should have a default variant")
+            })
+            .clone()
     }
     fn requirement_met(&self, requirement: &Requirement) -> bool {
         match requirement {
@@ -221,6 +229,11 @@ mod test {
         )
         .unwrap();
         GameState::new(world)
+    }
+
+    #[test]
+    fn test_do_action() {
+        let mut state = make_game();
     }
 
     #[test]

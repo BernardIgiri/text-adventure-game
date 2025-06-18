@@ -141,7 +141,7 @@ mod test {
         assert_that!(scared.requires().first().unwrap()).satisfies_with_message(
             "expected RoomVariant",
             |r| {
-                matches!(***r, Requirement::RoomVariant(ref rv)
+                matches!(**r, Requirement::RoomVariant(ref rv)
                 if rv.name() == &t("WoodShed") && rv.variant().clone().unwrap() == i("closed"))
             },
         );
@@ -151,7 +151,7 @@ mod test {
         assert_that!(happy.requires().first().unwrap()).satisfies_with_message(
             "expected RoomVariant",
             |r| {
-                matches!(***r, Requirement::RoomVariant(ref rv)
+                matches!(**r, Requirement::RoomVariant(ref rv)
                 if rv.name() == &t("WoodShed") && rv.variant().is_none())
             },
         );

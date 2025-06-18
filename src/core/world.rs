@@ -12,9 +12,9 @@ use super::{
 #[derive(Debug, Getters)]
 pub struct World {
     title: GameTitle,
-    action: ActionMap,
-    room: RoomMap,
-    dialog: DialogueMap,
+    actions: ActionMap,
+    rooms: RoomMap,
+    dialogues: DialogueMap,
 }
 
 impl World {
@@ -83,9 +83,9 @@ impl World {
         }
         Ok(Self {
             title,
-            action: actions,
-            room: rooms,
-            dialog: dialogues,
+            actions,
+            rooms,
+            dialogues,
         })
     }
 }

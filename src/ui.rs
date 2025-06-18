@@ -242,7 +242,7 @@ impl UI {
     pub fn present_chat(
         &mut self,
         character_name: &str,
-        dialogue: &Option<String>,
+        dialogue: &str,
         responses: &[String],
     ) -> ChatChoice {
         let title_view = TextView::new(character_name).h_align(HAlign::Center);
@@ -256,10 +256,12 @@ impl UI {
             });
             siv.quit();
         });
-        menu.add_item("Nothing", ChatChoice::Leave);
+        if responses.is_empty() {
+            menu.add_item("Nothing", ChatChoice::Leave);
+        }
 
         let mut body = StyledString::new();
-        body.append_plain(dialogue.clone().unwrap_or_else(|| "...".to_string()));
+        body.append_plain(dialogue);
         body.append_plain("\nYou Say:");
         let body_view = TextView::new(body).h_align(HAlign::Left);
 

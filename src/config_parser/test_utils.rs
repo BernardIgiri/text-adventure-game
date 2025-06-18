@@ -245,7 +245,7 @@ pub mod data {
                             Dialogue::builder()
                                 .text("Who goes there? I can't see ya, but I can smell ya!".into())
                                 .responses(vec![])
-                                .requires(vec![Rc::new(Requirement::RoomVariant(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone()))])
+                                .requires(vec![Requirement::RoomVariant(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())])
                                 .build(),
                         ),
                     ),
@@ -261,9 +261,9 @@ pub mod data {
                             .responses(vec![
                                 response_map.get(&i("im_sorry")).unwrap().clone(),
                             ])
-                            .requires(vec![Rc::new(Requirement::HasItem(
+                            .requires(vec![Requirement::HasItem(
                                 item_map.get(&i("ring")).unwrap().clone(),
-                            ))])
+                            )])
                             .build(),
                     ),
                 )]),
@@ -278,9 +278,9 @@ pub mod data {
                             .responses(vec![
                                 response_map.get(&i("sure")).unwrap().clone(),
                             ])
-                            .requires(vec![Rc::new(Requirement::HasItem(
+                            .requires(vec![Requirement::HasItem(
                                 item_map.get(&i("ring")).unwrap().clone(),
-                            ))])
+                            )])
                             .build(),
                     ),
                 )]),

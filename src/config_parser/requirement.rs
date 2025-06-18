@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     core::{Identifier, Requirement},
     error,
@@ -15,7 +13,7 @@ pub fn parse_requirements(
     entity_type: &'static str,
     item_map: &ItemMap,
     room_map: &RoomMap,
-) -> Result<Vec<Rc<Requirement>>, error::Application> {
+) -> Result<Vec<Requirement>, error::Application> {
     record
         .properties
         .get_list("requires")
@@ -29,7 +27,7 @@ fn parse_one_requirement(
     item_map: &ItemMap,
     room_map: &RoomMap,
     string: &str,
-) -> Result<Rc<Requirement>, error::Application> {
+) -> Result<Requirement, error::Application> {
     let mut parts = string.splitn(2, ':').map(str::trim);
     let r_type = parts
         .next()
@@ -98,7 +96,7 @@ fn parse_one_requirement(
             });
         }
     };
-    Ok(Rc::new(requirement))
+    Ok(requirement)
 }
 
 // Allowed in tests
@@ -138,7 +136,7 @@ mod test {
         let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &*result[0] {
+        match &result[0] {
             Requirement::HasItem(item) => {
                 assert_eq!(item.name(), &i("key"));
             }
@@ -165,7 +163,7 @@ mod test {
         let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &*result[0] {
+        match &result[0] {
             Requirement::DoesNotHave(item) => {
                 assert_eq!(item.name(), &i("key"));
             }
@@ -195,7 +193,7 @@ mod test {
         let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &*result[0] {
+        match &result[0] {
             Requirement::RoomVariant(room) => {
                 assert_eq!(room.name(), &t("WoodShed"));
                 assert_eq!(room.variant(), &Some(i("closed")));
@@ -223,7 +221,7 @@ mod test {
         let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &*result[0] {
+        match &result[0] {
             Requirement::RoomVariant(room) => {
                 assert_eq!(room.name(), &t("WoodShed"));
                 assert_eq!(room.variant(), &None);

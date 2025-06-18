@@ -3,6 +3,7 @@ use std::{
     rc::Rc,
 };
 
+use cursive::utils::Counter;
 use ini::Ini;
 
 use crate::{config_parser, error};
@@ -161,12 +162,20 @@ impl GameState {
             .expect("All dialogue ids should be in the world!");
         variants
             .values()
-            .find(|dialogue| {
-                dialogue
+            .filter_map(|dialogue| {
+                let count = dialogue
                     .requires()
                     .iter()
-                    .all(|req| self.requirement_met(req))
+                    .filter(|req| self.requirement_met(req))
+                    .count();
+                if dialogue.requires().len() != count || count == 0 {
+                    None
+                } else {
+                    Some((count, dialogue))
+                }
             })
+            .max_by_key(|(k, _)| *k)
+            .map(|(_, v)| v)
             .unwrap_or_else(|| {
                 variants
                     .get(&None)

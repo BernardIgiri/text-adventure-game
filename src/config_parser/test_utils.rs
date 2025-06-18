@@ -102,6 +102,10 @@ pub mod data {
                 Rc::new(Item::new(i("silver_coin"), "I'm rich!".into())),
             ),
             (
+                i("lamp"),
+                Rc::new(Item::new(i("lamp"), "It's so bright!".into())),
+            ),
+            (
                 i("half_eaten_apple"),
                 Rc::new(Item::new(
                     i("half_eaten_apple"),
@@ -243,6 +247,20 @@ pub mod data {
                                 .text("Who goes there? I can't see ya, but I can smell ya!".into())
                                 .responses(vec![])
                                 .requires(vec![Requirement::RoomVariant(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())])
+                                .build(),
+                        ),
+                    ),
+                    (
+                        Some(i("relieved")),
+                        Rc::new(
+                            Dialogue::builder()
+                                .text("Whew! Thank you buddy! I was scared for a second! I think they way out is this way!".into())
+                                .responses(vec![])
+                                .requires(vec![
+                                    Requirement::RoomVariant(
+                                        room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone()),
+                                    Requirement::HasItem(item_map.get(&i("lamp")).unwrap().clone())
+                                ])
                                 .build(),
                         ),
                     ),

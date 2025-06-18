@@ -230,11 +230,11 @@ mod test {
         GameState::new(world)
     }
 
-    #[test]
-    fn test_do_action() {
-        // let mut state = make_game();
-        todo!()
-    }
+    // #[test]
+    // fn test_do_action() {
+    //     // let mut state = make_game();
+    //     todo!()
+    // }
 
     #[test]
     fn test_room_variant_requirement_met() {

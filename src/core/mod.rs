@@ -14,3 +14,6 @@ pub use world::World;
 pub type ActionMap = HashMap<Identifier, Rc<Action>>;
 pub type DialogueMap = HashMap<Identifier, HashMap<Option<Identifier>, Rc<Dialogue>>>;
 pub type RoomMap = HashMap<Title, HashMap<Option<Identifier>, Rc<Room>>>;
+pub type CharacterMap = HashMap<Title, Rc<Character>>;
+pub type ResponseMap = HashMap<Identifier, Rc<Response>>;
+pub type ItemMap = HashMap<Identifier, Rc<Item>>;

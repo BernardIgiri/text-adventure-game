@@ -1,11 +1,7 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
-pub use crate::core::{ActionMap, DialogueMap, RoomMap};
-use crate::core::{Character, Identifier, Item, Response, Room, Title};
-
-pub type CharacterMap = HashMap<Title, Rc<Character>>;
-pub type ResponseMap = HashMap<Identifier, Rc<Response>>;
-pub type ItemMap = HashMap<Identifier, Rc<Item>>;
+pub use crate::core::{ActionMap, CharacterMap, DialogueMap, ItemMap, ResponseMap, RoomMap};
+use crate::core::{Identifier, Room, Title};
 
 pub trait RoomVariant {
     fn get_room(&self, room: &Title, variant: &Option<Identifier>) -> Option<Rc<Room>>;

@@ -28,7 +28,7 @@ impl World {
     ) -> Result<Self, error::Application> {
         // find missing defaults
         for (id, inner) in rooms.iter() {
-            if inner.contains_key(&None) {
+            if !inner.contains_key(&None) {
                 return Err(error::DefaultEntityNotFound {
                     etype: "Room",
                     id: id.to_string(),
@@ -36,9 +36,9 @@ impl World {
             }
         }
         for (id, inner) in dialogues.iter() {
-            if inner.contains_key(&None) {
+            if !inner.contains_key(&None) {
                 return Err(error::DefaultEntityNotFound {
-                    etype: "Dialogues",
+                    etype: "Dialogue",
                     id: id.to_string(),
                 });
             }
@@ -105,5 +105,123 @@ impl World {
             rooms,
             dialogues,
         })
+    }
+}
+
+// Allowed in tests
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod test {
+    use asserting::assert_that;
+    use asserting::prelude::AssertStringPattern;
+
+    use crate::config_parser::test_utils::data::{
+        action_map, character_map, dialogue_map, item_map, response_map, room_map,
+    };
+    use crate::config_parser::test_utils::{i, t};
+    use crate::core::{CharacterMap, ResponseMap};
+
+    use super::*;
+
+    struct WorldData {
+        title: GameTitle,
+        characters: CharacterMap,
+        rooms: RoomMap,
+        actions: ActionMap,
+        responses: ResponseMap,
+        dialogues: DialogueMap,
+    }
+
+    impl WorldData {
+        pub fn new() -> Self {
+            let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
+            let characters = character_map();
+            let items = item_map();
+            let rooms = room_map(true);
+            let actions = action_map(&rooms, &items);
+            let responses = response_map(&actions);
+            let dialogues = dialogue_map(&responses, &items, &rooms);
+            Self {
+                title,
+                characters,
+                rooms,
+                actions,
+                responses,
+                dialogues,
+            }
+        }
+
+        pub fn world_from_data(self) -> Result<World, error::Application> {
+            World::try_new(
+                self.title,
+                self.actions,
+                self.rooms,
+                self.dialogues,
+                self.characters.values().cloned().collect::<Vec<_>>(),
+                self.responses.values().cloned().collect::<Vec<_>>(),
+            )
+        }
+    }
+
+    #[test]
+    fn try_new_succeeds_when_all_entities_present() {
+        let data = WorldData::new();
+        let world = data.world_from_data();
+        assert!(world.is_ok());
+    }
+
+    #[test]
+    fn try_new_fails_when_a_referenced_action_is_missing() {
+        let mut data = WorldData::new();
+        data.actions.remove(&i("pull_lever"));
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Action")
+            .contains("pull_lever");
+    }
+
+    #[test]
+    fn try_new_fails_when_a_referenced_room_is_missing() {
+        let mut data = WorldData::new();
+        data.rooms.remove(&t("Field"));
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Room")
+            .contains("Field");
+    }
+
+    #[test]
+    fn try_new_fails_when_a_referenced_dialogue_is_missing() {
+        let mut data = WorldData::new();
+        data.dialogues.remove(&i("chirp"));
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Dialogue")
+            .contains("chirp");
+    }
+
+    #[test]
+    fn try_new_fails_when_default_room_variant_missing() {
+        let mut data = WorldData::new();
+        data.rooms.get_mut(&t("WoodShed")).unwrap().remove(&None);
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Room")
+            .contains("Wood Shed");
+    }
+
+    #[test]
+    fn try_new_fails_when_default_dialogue_variant_missing() {
+        let mut data = WorldData::new();
+        data.dialogues.get_mut(&i("hello")).unwrap().remove(&None);
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Dialogue")
+            .contains("hello");
     }
 }

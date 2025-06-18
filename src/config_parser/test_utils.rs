@@ -52,7 +52,7 @@ pub mod data {
                 ),
             ),
             (
-                "hello".parse().unwrap(),
+                i("hello"),
                 Rc::new(
                     Response::builder()
                         .text("Hello!".into())
@@ -61,7 +61,7 @@ pub mod data {
                 ),
             ),
             (
-                "im_sorry".parse().unwrap(),
+                i("im_sorry"),
                 Rc::new(
                     Response::builder()
                         .text("No, I don't I do...".into())
@@ -70,7 +70,7 @@ pub mod data {
                 ),
             ),
             (
-                "im_sorry".parse().unwrap(),
+                i("sure"),
                 Rc::new(
                     Response::builder()
                         .text("Well, one drink couldn't hurt!".into())
@@ -245,7 +245,7 @@ pub mod data {
                             Dialogue::builder()
                                 .text("Who goes there? I can't see ya, but I can smell ya!".into())
                                 .responses(vec![])
-                                .requires(vec![])
+                                .requires(vec![Rc::new(Requirement::RoomVariant(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone()))])
                                 .build(),
                         ),
                     ),

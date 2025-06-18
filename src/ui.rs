@@ -242,7 +242,7 @@ impl UI {
     pub fn present_chat(
         &mut self,
         character_name: &str,
-        dialogue: &str,
+        dialogue: &Option<String>,
         responses: &[String],
     ) -> ChatChoice {
         let title_view = TextView::new(character_name).h_align(HAlign::Center);
@@ -259,7 +259,7 @@ impl UI {
         menu.add_item("Nothing", ChatChoice::Leave);
 
         let mut body = StyledString::new();
-        body.append_plain(dialogue);
+        body.append_plain(dialogue.clone().unwrap_or_else(|| "...".to_string()));
         body.append_plain("\nYou Say:");
         let body_view = TextView::new(body).h_align(HAlign::Left);
 
@@ -314,8 +314,13 @@ impl UI {
         }
     }
 
-    pub fn present_action(&mut self, action_name: &str, action_description: &str) {
-        let (title, body) = prompt_header(&action_name.to_case(Case::Title), action_description);
+    pub fn present_action(&mut self, action_name: &str, action_description: &str, success: bool) {
+        let description = if success {
+            action_description
+        } else {
+            "Nothing happened..."
+        };
+        let (title, body) = prompt_header(&action_name.to_case(Case::Title), description);
         let body_view = TextView::new(body).h_align(HAlign::Center);
         let pause = pause_for_any_key_view();
 

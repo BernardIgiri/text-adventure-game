@@ -8,7 +8,7 @@ pub enum Player {
     StartingChat,
     ChatWith(Rc<Character>, Option<Rc<Dialogue>>),
     SelectingAction,
-    DoingAction(Rc<Action>),
+    DoingAction(Rc<Action>, bool),
     Leaving,
     GameOver,
 }

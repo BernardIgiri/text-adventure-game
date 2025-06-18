@@ -97,13 +97,20 @@ fn play() -> Result<(), error::Application> {
                 }
             }
             P::ChatWith(c, d) => {
-                let dialogue = d.unwrap_or_else(|| state.character_dialogue(&c));
-                let responses = state.dialogue_responses(&dialogue);
+                let (dialogue_text, responses) = d
+                    .or_else(|| state.character_initial_dialogue(&c))
+                    .map(|dialogue| {
+                        (
+                            Some(dialogue.text().clone()),
+                            state.dialogue_responses(&dialogue),
+                        )
+                    })
+                    .unwrap_or((None, Vec::new()));
                 let responses_text = responses
                     .iter()
                     .map(|v| v.text().to_string())
                     .collect::<Vec<_>>();
-                let choice = ui.present_chat(c.name().as_str(), dialogue.text(), &responses_text);
+                let choice = ui.present_chat(c.name().as_str(), &dialogue_text, &responses_text);
                 use ChatChoice as C;
                 match choice {
                     C::RespondWith(i) => {
@@ -138,14 +145,14 @@ fn play() -> Result<(), error::Application> {
                             .get(i)
                             .expect("Only valid actions choices should be in the menu!")
                             .clone();
-                        state.do_action(&action);
-                        P::DoingAction(action)
+                        let success = state.do_action(&action);
+                        P::DoingAction(action, success)
                     }
                     C::Nothing => P::Idle,
                 }
             }
-            P::DoingAction(a) => {
-                ui.present_action(a.name().as_str(), a.description().as_str());
+            P::DoingAction(a, success) => {
+                ui.present_action(a.name().as_str(), a.description().as_str(), success);
                 P::Idle
             }
             P::Leaving => {

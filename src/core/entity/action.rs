@@ -14,6 +14,9 @@ macro_rules! define_action {
             $($field:ident : $type:ty),* $(,)?
         }
     ) => {
+        // Both ChangeRoom and TakeItem falsely report that required is unused
+        // required is used both in the parser and in GameState::do_action
+        #[allow(dead_code)]
         #[derive(Getters, Builder, Debug, PartialEq, Eq)]
         pub struct $name {
             name: Identifier,

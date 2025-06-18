@@ -102,9 +102,8 @@ impl GameState {
                 .expect("The start_room should be validated by this point.")
         })
     }
-    pub fn character_dialogue(&self, character: &Character) -> Rc<Dialogue> {
+    pub fn character_initial_dialogue(&self, character: &Character) -> Option<Rc<Dialogue>> {
         self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
-            .expect("Character dialogue names should be validated by this point.")
     }
     pub fn dialogue_responses(&self, dialogue: &Dialogue) -> Vec<Rc<Response>> {
         DialogueRefs::new(dialogue)
@@ -183,7 +182,10 @@ mod test {
     use std::collections::HashMap;
     use std::rc::Rc;
 
-    use crate::core::RoomMap;
+    use crate::config_parser::test_utils::data::{
+        action_map, character_map, dialogue_map, item_map, response_map, room_map,
+    };
+    use crate::config_parser::test_utils::{i, t};
 
     use super::*;
 
@@ -201,30 +203,31 @@ mod test {
         )
     }
 
-    #[test]
-    fn test_room_variant_requirement_met() {
-        let room_name = "Barn".parse::<Title>().unwrap();
-        let variant_name = "drained".parse::<Identifier>().unwrap();
-        let title = GameTitle::new("".into(), "".into(), "".into(), room_name.clone());
-
-        let mut rooms = RoomMap::new();
-        let mut inner = HashMap::new();
-        inner.insert(None, make_room(room_name.clone(), None));
-        inner.insert(
-            Some(variant_name.clone()),
-            make_room(room_name.clone(), Some(variant_name.clone())),
-        );
-        rooms.insert(room_name.clone(), inner);
+    fn make_game() -> GameState {
+        let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
+        let characters = character_map();
+        let items = item_map();
+        let rooms = room_map(&items, true);
+        let actions = action_map(&rooms, &items);
+        let responses = response_map(&actions);
+        let dialogues = dialogue_map(&responses, &items, &rooms);
         let world = World::try_new(
             title,
-            HashMap::new(),
+            actions,
             rooms,
-            HashMap::new(),
-            Vec::new(),
-            Vec::new(),
+            dialogues,
+            characters.values().cloned().collect(),
+            responses.values().cloned().collect(),
         )
         .unwrap();
-        let mut state = GameState::new(world);
+        GameState::new(world)
+    }
+
+    #[test]
+    fn test_room_variant_requirement_met() {
+        let mut state = make_game();
+        let room_name = t("WoodShed");
+        let variant_name = i("closed");
         let req = Requirement::RoomVariant(make_room(room_name.clone(), None));
         assert!(state.requirement_met(&req));
 
@@ -247,8 +250,7 @@ mod test {
         assert!(state.requirement_met(&req));
 
         // Case 5: Entry = Some(x), expected = Some(y) ≠ x => false
-        let req =
-            Requirement::RoomVariant(make_room(room_name, Some("different".parse().unwrap())));
+        let req = Requirement::RoomVariant(make_room(room_name, Some(i("different"))));
         assert!(!state.requirement_met(&req));
     }
 }

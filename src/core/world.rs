@@ -26,6 +26,24 @@ impl World {
         characters: Vec<Rc<Character>>,
         responses: Vec<Rc<Response>>,
     ) -> Result<Self, error::Application> {
+        // find missing defaults
+        for (id, inner) in rooms.iter() {
+            if inner.contains_key(&None) {
+                return Err(error::DefaultEntityNotFound {
+                    etype: "Room",
+                    id: id.to_string(),
+                });
+            }
+        }
+        for (id, inner) in dialogues.iter() {
+            if inner.contains_key(&None) {
+                return Err(error::DefaultEntityNotFound {
+                    etype: "Dialogues",
+                    id: id.to_string(),
+                });
+            }
+        }
+        // Find missing ids
         let mut missing_dialogue_ids = characters
             .iter()
             .map(|c| CharacterRefs::new(c).start_dialogue().clone())

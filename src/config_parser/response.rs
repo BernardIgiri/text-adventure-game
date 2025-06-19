@@ -30,7 +30,7 @@ pub fn parse_responses<'a>(
             Some(s) => Some(s.parse()?),
             None => None,
         };
-        let action = match record.properties.get("action") {
+        let action = match record.properties.get("triggers") {
             Some(action_name) => Some(
                 action_map
                     .get(&action_name.parse::<Identifier>()?)

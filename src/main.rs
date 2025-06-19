@@ -119,13 +119,22 @@ fn play() -> Result<(), error::Application> {
                             .get(i)
                             .expect("Only valid response choices should be in the menu!")
                             .clone();
-                        state.trigger_response(&response);
-                        state
-                            .response_reply(&response)
-                            .map_or(P::Idle, |d| P::ChatWith(character, Some(d)))
+                        if let Some(action) = state.trigger_response(&response) {
+                            P::DoActionInChatResponse(action, character, response)
+                        } else {
+                            state
+                                .response_reply(&response)
+                                .map_or(P::Idle, |d| P::ChatWith(character, Some(d)))
+                        }
                     }
                     C::Leave => P::Idle,
                 }
+            }
+            P::DoActionInChatResponse(action, character, response) => {
+                ui.present_action(action.name().as_str(), action.description().as_str(), true);
+                state
+                    .response_reply(&response)
+                    .map_or(P::Idle, |d| P::ChatWith(character, Some(d)))
             }
             P::SelectingAction => {
                 let room = state.current_room();

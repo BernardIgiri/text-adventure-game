@@ -3,6 +3,7 @@ use std::{
     rc::Rc,
 };
 
+use cursive::reexports::log::info;
 use ini::Ini;
 
 use crate::{config_parser, error};
@@ -44,13 +45,23 @@ impl GameState {
         self.current_room = Some(room.name().clone());
     }
     // TODO this needs to return the completed action
-    pub fn trigger_response(&mut self, response: &Response) -> bool {
+    pub fn trigger_response(&mut self, response: &Response) -> Option<Rc<Action>> {
+        info!("trigger_response({:#?})", response);
         response
             .triggers()
             .as_ref()
-            .is_none_or(|action| self.do_action(action))
+            .map(|action| {
+                if self.do_action(action) {
+                    Some(action)
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .cloned()
     }
     pub fn do_action(&mut self, action: &Action) -> bool {
+        info!("do_action({:#?})", action);
         use Action::*;
         match action {
             ChangeRoom(c) => {

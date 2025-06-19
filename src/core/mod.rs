@@ -6,7 +6,7 @@ use std::{collections::HashMap, rc::Rc};
 
 pub use entity::{
     Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, Item, ReplaceItem,
-    Requirement, Response, Room, TakeItem, Title,
+    Requirement, Response, Room, TakeItem, Teleport, Title,
 };
 pub use state::GameState;
 pub use world::World;

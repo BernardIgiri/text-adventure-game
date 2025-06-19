@@ -7,7 +7,9 @@ use crate::{
         iter::{EntitySection, SectionRecordIter},
         types::RoomVariant,
     },
-    core::{Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Title},
+    core::{
+        Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Teleport, Title,
+    },
     error,
 };
 
@@ -28,6 +30,8 @@ pub fn parse_actions<'a>(
         let record = record?;
         let action = if record.properties.contains_key("change_room") {
             next_change_room_action(&record, room_map, item_map)
+        } else if record.properties.contains_key("teleport_to") {
+            next_teleport_action(&record, item_map)
         } else if record.properties.contains_key("replace_item") {
             next_replace_item_action(&record, item_map)
         } else if record.properties.contains_key("give_item") {
@@ -89,6 +93,24 @@ fn next_change_room_action(
                 .name(name)
                 .description(description.into())
                 .room(room)
+                .maybe_required(required)
+                .build(),
+        ),
+    )))
+}
+
+fn next_teleport_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    let room_name = record.properties.require("teleport_to", record)?;
+    let description = record.properties.require("description", record)?;
+    let required = required_item_from_record(record, item_map)?;
+    let name = record.name.parse::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::Teleport(
+            Teleport::builder()
+                .name(name)
+                .description(description.into())
+                .room_name(room_name.parse()?)
                 .maybe_required(required)
                 .build(),
         ),
@@ -239,6 +261,11 @@ mod test {
         [Action:pickup_key]
         take_item=key
         description=You pick up the dingy key on the floor.
+        
+        [Action:beam_me_up]
+        teleport_to=Enterprise
+        required=silver_coin
+        description=Scotty teleports you abord the ship!
     ";
 
     #[test]
@@ -249,11 +276,12 @@ mod test {
         let actions = parse_actions(ini.iter(), &rooms, &items).unwrap();
 
         assert_that!(&actions)
-            .has_length(4)
+            .has_length(5)
             .contains_key(i("pull_lever"))
             .contains_key(i("pay_bribe"))
             .contains_key(i("unlock_chest"))
-            .contains_key(i("pickup_key"));
+            .contains_key(i("pickup_key"))
+            .contains_key(i("beam_me_up"));
 
         let pull_lever = actions.get(&i("pull_lever")).unwrap();
         assert_that!(pull_lever).satisfies_with_message("expected ChangeRoom", |a| {
@@ -289,6 +317,15 @@ mod test {
                 && a.required().is_none()
                 && a.items().len() == 1
                 && a.items()[0].name() == &i("key")
+            )
+        });
+
+        let teleport = actions.get(&i("beam_me_up")).unwrap();
+        assert_that!(teleport).satisfies_with_message("expected Teleport", |a| {
+            matches!(a.as_ref(), Action::Teleport(tp)
+                if tp.description().contains("teleports you")
+                && tp.required().as_ref().map(|i| i.name()) == Some(&i("silver_coin"))
+                && tp.room_name().clone() == t("Enterprise")
             )
         });
     }

@@ -40,7 +40,6 @@ impl GameState {
     pub fn credits(&self) -> &String {
         self.world.title().credits()
     }
-
     pub fn enter_room(&mut self, room: Rc<Room>) {
         self.current_room = Some(room.name().clone());
     }
@@ -98,6 +97,20 @@ impl GameState {
                     }
                 }
                 self.inventory.extend(t.items().clone());
+                true
+            }
+            Teleport(t) => {
+                if let Some(r) = t.required() {
+                    if !self.inventory.contains(r) {
+                        return false;
+                    } else {
+                        self.inventory.remove(r);
+                    }
+                }
+                self.enter_room(
+                    self.look_up_room(t.room_name())
+                        .expect("All Rooms should exists in the world!"),
+                );
                 true
             }
         }
@@ -398,6 +411,24 @@ mod test {
         .is_true();
         assert_eq!(state.current_room().name().clone(), id);
         assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
+    }
+
+    #[test]
+    fn test_do_action_teleport() {
+        let (mut state, ..) = make_game();
+        let id = t("Field");
+        state.current_room = Some(t("WoodShed"));
+        assert_that!(state.do_action(&Action::Teleport(
+            Teleport::builder()
+                .name(i("beam_me_up"))
+                .description(
+                    "You suddenly find yourself naked in an open field! The wind is cold...".into()
+                )
+                .room_name(id.clone())
+                .build()
+        )))
+        .is_true();
+        assert_eq!(state.current_room().name().clone(), id);
     }
 
     #[test]

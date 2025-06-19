@@ -6,6 +6,7 @@ use derive_getters::Getters;
 use super::{
     invariant::Identifier,
     room::{Item, Room},
+    Title,
 };
 
 macro_rules! define_action {
@@ -47,12 +48,18 @@ define_action!(TakeItem {
     items: Vec<Rc<Item>>,
 });
 
+define_action!(Teleport {
+    required: Option<Rc<Item>>,
+    room_name: Title,
+});
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     ChangeRoom(ChangeRoom),
     GiveItem(GiveItem),
     ReplaceItem(ReplaceItem),
     TakeItem(TakeItem),
+    Teleport(Teleport),
 }
 
 impl Action {
@@ -62,6 +69,7 @@ impl Action {
             Self::GiveItem(give_item) => give_item.name(),
             Self::ReplaceItem(replace_item) => replace_item.name(),
             Self::TakeItem(take_item) => take_item.name(),
+            Self::Teleport(teleport) => teleport.name(),
         }
     }
     pub fn description(&self) -> &String {
@@ -70,6 +78,7 @@ impl Action {
             Self::GiveItem(give_item) => give_item.description(),
             Self::ReplaceItem(replace_item) => replace_item.description(),
             Self::TakeItem(take_item) => take_item.description(),
+            Self::Teleport(teleport) => teleport.description(),
         }
     }
 }

@@ -4,7 +4,7 @@ use cursive::{
     theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme},
     utils::{markup::StyledString, span::SpannedString},
     view::{IntoBoxedView, Resizable},
-    views::{Button, DummyView, LinearLayout, SelectView, TextView},
+    views::{Button, DummyView, LayerPosition, LinearLayout, SelectView, TextView},
     Cursive, CursiveExt,
 };
 
@@ -116,7 +116,7 @@ impl UI {
             .child(DummyView.full_height())
             .weight(1)
             .full_width();
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
     }
 
@@ -142,7 +142,7 @@ impl UI {
             .child(DummyView.full_height())
             .weight(1)
             .full_width();
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
     }
 
@@ -193,7 +193,7 @@ impl UI {
 
         let layout = menu_layout(title, body_view, menu);
 
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
         if let Some(UIState {
             choice: UIChoice::InRoom(choice),
@@ -229,7 +229,7 @@ impl UI {
         let body_view = TextView::new(body).h_align(HAlign::Left);
         let layout = menu_layout(title, body_view, menu);
 
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
         if let Some(UIState {
             choice: UIChoice::StartChat(choice),
@@ -270,7 +270,7 @@ impl UI {
 
         let layout = menu_layout(title_view, body_view, menu);
 
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
         if let Some(UIState {
             choice: UIChoice::InChat(choice),
@@ -306,7 +306,7 @@ impl UI {
         let body_view = TextView::new(body).h_align(HAlign::Left);
         let layout = menu_layout(title, body_view, menu);
 
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
         if let Some(UIState {
             choice: UIChoice::Interact(choice),
@@ -350,7 +350,7 @@ impl UI {
             .child(layout)
             .child(DummyView.full_width())
             .weight(1);
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
     }
 
@@ -377,7 +377,7 @@ impl UI {
         let body_view = TextView::new(body).h_align(HAlign::Left);
         let layout = menu_layout(title, body_view, menu);
 
-        self.siv.add_fullscreen_layer(layout);
+        self.swap_layer(layout);
         self.siv.run();
         if let Some(UIState {
             choice: UIChoice::Leave(choice),
@@ -387,6 +387,17 @@ impl UI {
             choice.clone()
         } else {
             panic!("Expected exit direction in exit room prompt!");
+        }
+    }
+    fn swap_layer<T>(&mut self, layer: T)
+    where
+        T: IntoBoxedView,
+    {
+        self.siv.add_fullscreen_layer(layer);
+        if self.siv.screen().len() > 1 {
+            self.siv
+                .screen_mut()
+                .remove_layer(LayerPosition::FromBack(0));
         }
     }
 }

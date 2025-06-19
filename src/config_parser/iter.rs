@@ -150,7 +150,17 @@ impl RecordProperty for Properties {
         } else {
             let mut expected_props: Vec<&str> = allowed_keys.into_iter().collect();
             expected_props.sort_unstable();
-
+            let expected_props = expected_props
+                .iter()
+                .map(|p| {
+                    if optional_keys.contains(p) {
+                        format!("{p}*")
+                    } else {
+                        p.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             let mut found_props: Vec<&str> = found_keys.into_iter().collect();
             found_props.sort_unstable();
 
@@ -160,7 +170,7 @@ impl RecordProperty for Properties {
                     .expect("Valid record sections should already be established by now!")
                     .into(),
                 id: record.qualified_name.into(),
-                expected_props: expected_props.join(", "),
+                expected_props,
                 found_props: found_props.join(", "),
             })
         }
@@ -268,7 +278,7 @@ mod tests {
                 entity,
                 id,
             } => {
-                assert_eq!(expected_props, "description, weight");
+                assert_eq!(expected_props, "description, weight*");
                 assert_eq!(found_props, "weight");
                 assert_eq!(entity, "Item");
                 assert_eq!(id, "ring");
@@ -293,7 +303,7 @@ mod tests {
                 entity,
                 id,
             } => {
-                assert_eq!(expected_props, "description, weight");
+                assert_eq!(expected_props, "description, weight*");
                 assert_eq!(found_props, "color, description, weight");
                 assert_eq!(entity, "Item");
                 assert_eq!(id, "ring");

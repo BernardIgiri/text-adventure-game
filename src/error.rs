@@ -39,6 +39,8 @@ pub enum Application {
     },
     #[error("Unknown section `{0}` found!")]
     UnknownSectionFound(String),
+    #[error("Malformed multiline string found on lines {0}! Make sure you have the correct number of \"'s")]
+    MalformedMultilineString(String),
 }
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use ini::{Properties, SectionIter};
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 use strum::{EnumIter, EnumString, IntoStaticStr};
 
 use crate::{
@@ -110,11 +110,17 @@ fn get_record<'a>(
     })
 }
 
-pub trait RequireProperty {
+pub trait RecordProperty {
     fn require(&self, prop: &'static str, record: &Record) -> Result<&str, error::Application>;
+    fn expect_keys(
+        &self,
+        required: &[&'static str],
+        optional: &[&'static str],
+        record: &Record,
+    ) -> Result<(), error::Application>;
 }
 
-impl RequireProperty for Properties {
+impl RecordProperty for Properties {
     fn require(&self, prop: &'static str, record: &Record) -> Result<&str, error::Application> {
         self.get(prop).ok_or_else(|| error::PropertyNotFound {
             #[allow(clippy::expect_used)]
@@ -124,6 +130,40 @@ impl RequireProperty for Properties {
             property: prop,
             id: record.qualified_name.into(),
         })
+    }
+
+    fn expect_keys(
+        &self,
+        required: &[&'static str],
+        optional: &[&'static str],
+        record: &Record,
+    ) -> Result<(), error::Application> {
+        let found_keys: HashSet<&str> = self.iter().map(|(k, _)| k).collect();
+        let required_keys: HashSet<&str> = required.iter().copied().collect();
+        let optional_keys: HashSet<&str> = optional.iter().copied().collect();
+        let allowed_keys: HashSet<&str> = required_keys.union(&optional_keys).copied().collect();
+
+        if required_keys.difference(&found_keys).next().is_none()
+            && found_keys.difference(&allowed_keys).next().is_none()
+        {
+            Ok(())
+        } else {
+            let mut expected_props: Vec<&str> = allowed_keys.into_iter().collect();
+            expected_props.sort_unstable();
+
+            let mut found_props: Vec<&str> = found_keys.into_iter().collect();
+            found_props.sort_unstable();
+
+            Err(error::PropertyNamesDontMatch {
+                #[allow(clippy::expect_used)]
+                entity: EntitySection::from_str(record.section)
+                    .expect("Valid record sections should already be established by now!")
+                    .into(),
+                id: record.qualified_name.into(),
+                expected_props: expected_props.join(", "),
+                found_props: found_props.join(", "),
+            })
+        }
     }
 }
 
@@ -138,5 +178,127 @@ impl ListProperty for Properties {
             .split(',')
             .map(str::trim)
             .filter(|s| !s.is_empty())
+    }
+}
+
+// Allowed in tests
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ini::Properties;
+
+    fn make_record<'a>(section: &'a str, name: &'a str, properties: &'a Properties) -> Record<'a> {
+        Record {
+            section,
+            name,
+            variant: None,
+            properties,
+            qualified_name: name, // for testing, same as name
+        }
+    }
+
+    fn make_properties(map: &[(&str, &str)]) -> Properties {
+        let mut props = Properties::new();
+        for (k, v) in map {
+            props.insert((*k).to_string(), (*v).to_string());
+        }
+        props
+    }
+
+    #[test]
+    fn test_require_success() {
+        let props = make_properties(&[("description", "A golden ring.")]);
+        let record = make_record("Item", "ring", &props);
+
+        let result = props.require("description", &record);
+        assert_eq!(result.unwrap(), "A golden ring.");
+    }
+
+    #[test]
+    fn test_require_failure() {
+        let props = make_properties(&[]);
+        let record = make_record("Item", "ring", &props);
+
+        let err = props.require("description", &record).unwrap_err();
+        match err {
+            error::Application::PropertyNotFound {
+                property,
+                id,
+                entity,
+            } => {
+                assert_eq!(property, "description");
+                assert_eq!(id, "ring");
+                assert_eq!(entity, "Item");
+            }
+            _ => panic!("Expected PropertyNotFound"),
+        }
+    }
+
+    #[test]
+    fn test_expect_keys_success_with_optional() {
+        let props = make_properties(&[("description", "A ring"), ("weight", "5")]);
+        let record = make_record("Item", "ring", &props);
+
+        let result = props.expect_keys(&["description"], &["weight"], &record);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_expect_keys_success_required_only() {
+        let props = make_properties(&[("description", "A ring")]);
+        let record = make_record("Item", "ring", &props);
+
+        let result = props.expect_keys(&["description"], &["weight"], &record);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_expect_keys_missing_required() {
+        let props = make_properties(&[("weight", "5")]);
+        let record = make_record("Item", "ring", &props);
+
+        let err = props
+            .expect_keys(&["description"], &["weight"], &record)
+            .unwrap_err();
+        match err {
+            error::Application::PropertyNamesDontMatch {
+                expected_props,
+                found_props,
+                entity,
+                id,
+            } => {
+                assert_eq!(expected_props, "description, weight");
+                assert_eq!(found_props, "weight");
+                assert_eq!(entity, "Item");
+                assert_eq!(id, "ring");
+            }
+            _ => panic!("Expected PropertyNamesDontMatch"),
+        }
+    }
+
+    #[test]
+    fn test_expect_keys_unexpected_extra_key() {
+        let props =
+            make_properties(&[("description", "A ring"), ("weight", "5"), ("color", "red")]);
+        let record = make_record("Item", "ring", &props);
+
+        let err = props
+            .expect_keys(&["description"], &["weight"], &record)
+            .unwrap_err();
+        match err {
+            error::Application::PropertyNamesDontMatch {
+                expected_props,
+                found_props,
+                entity,
+                id,
+            } => {
+                assert_eq!(expected_props, "description, weight");
+                assert_eq!(found_props, "color, description, weight");
+                assert_eq!(entity, "Item");
+                assert_eq!(id, "ring");
+            }
+            _ => panic!("Expected PropertyNamesDontMatch"),
+        }
     }
 }

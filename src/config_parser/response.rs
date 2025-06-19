@@ -4,7 +4,7 @@ use ini::SectionIter;
 
 use crate::{
     config_parser::{
-        iter::{EntitySection, RequireProperty, SectionRecordIter},
+        iter::{EntitySection, RecordProperty, SectionRecordIter},
         requirement::parse_requirements,
     },
     core::{Identifier, Response},
@@ -22,6 +22,9 @@ pub fn parse_responses<'a>(
     let mut map = ResponseMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Response.into()) {
         let record = record?;
+        record
+            .properties
+            .expect_keys(&["text"], &["leads_to", "triggers", "requires"], &record)?;
         let text = record.properties.require("text", &record)?;
         let leads_to = match record.properties.get("leads_to") {
             Some(s) => Some(s.parse()?),

@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, ListProperty, RequireProperty, SectionRecordIter},
+    iter::{EntitySection, ListProperty, RecordProperty, SectionRecordIter},
     requirement::parse_requirements,
     types::{DialogueMap, ItemMap, ResponseMap, RoomMap},
 };
@@ -22,6 +22,9 @@ pub fn parse_dialogues(
     let mut map = DialogueMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Dialogue.into()) {
         let record = record?;
+        record
+            .properties
+            .expect_keys(&["text"], &["response", "requires"], &record)?;
         let text = record.properties.require("text", &record)?;
         let responses = record
             .properties
@@ -168,8 +171,8 @@ mod test {
         assert_that!(dialogues)
             .is_err()
             .extracting(|e| e.err().unwrap().to_string())
-            .contains("not found")
-            .contains("farmer_greeting")
+            .contains("requires")
+            .contains("response")
             .contains("text")
             .contains("Dialogue");
     }

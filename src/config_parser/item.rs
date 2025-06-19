@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, SectionRecordIter},
+    iter::{EntitySection, RecordProperty, SectionRecordIter},
     types::ItemMap,
 };
 
@@ -16,6 +16,9 @@ pub fn parse_items<'a>(ini_iter: SectionIter<'a>) -> Result<ItemMap, error::Appl
     let mut map = ItemMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Item.into()) {
         let record = record?;
+        record
+            .properties
+            .expect_keys(&["description"], &[], &record)?;
         let description =
             record
                 .properties

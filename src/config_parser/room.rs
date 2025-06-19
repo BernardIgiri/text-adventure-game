@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, ListProperty, RequireProperty, SectionRecordIter},
+    iter::{EntitySection, ListProperty, RecordProperty, SectionRecordIter},
     types::{CharacterMap, RoomMap},
 };
 
@@ -19,6 +19,11 @@ pub fn parse_rooms<'a>(
     let mut map = RoomMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Room.into()) {
         let record = record?;
+        record.properties.expect_keys(
+            &["description"],
+            &["characters", "exits", "actions"],
+            &record,
+        )?;
         let description = record.properties.require("description", &record)?;
         let exits = record
             .properties

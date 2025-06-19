@@ -28,8 +28,15 @@ pub enum Application {
     MultipleMissingEntities(Vec<MissingEntityGroup>),
     #[error("Cannot find default `{etype}`  entity for id `{id}`")]
     DefaultEntityNotFound { etype: &'static str, id: String },
-    #[error("Uknown error")]
-    UknownError,
+    #[error(
+        "Expected properties `{expected_props}` but found `{found_props}` for entity `{entity}` with id `{id}`!"
+    )]
+    PropertyNamesDontMatch {
+        expected_props: String,
+        found_props: String,
+        entity: &'static str,
+        id: String,
+    },
 }
 
 #[derive(Debug)]

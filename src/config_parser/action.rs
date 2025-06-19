@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    iter::{Record, RequireProperty},
+    iter::{Record, RecordProperty},
     types::{ActionMap, ItemMap, RoomMap},
 };
 
@@ -53,6 +53,9 @@ fn next_change_room_action(
     room_map: &RoomMap,
     item_map: &ItemMap,
 ) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["change_room", "description"], &["required"], record)?;
     let (room_name, variant) = {
         let change_room =
             record
@@ -100,6 +103,9 @@ fn next_change_room_action(
 }
 
 fn next_teleport_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["teleport_to", "description"], &["required"], record)?;
     let room_name = record.properties.require("teleport_to", record)?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;
@@ -118,6 +124,9 @@ fn next_teleport_action(record: &Record, item_map: &ItemMap) -> ActionResult {
 }
 
 fn next_give_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["give_item", "description"], &[], record)?;
     let items = items_from_record(record, "give_item", item_map)?;
     let description = record.properties.require("description", record)?;
     let name = record.name.parse::<Identifier>()?;
@@ -134,6 +143,9 @@ fn next_give_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
 }
 
 fn next_replace_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["replace_item", "description"], &[], record)?;
     let description = record.properties.require("description", record)?;
     let replace_item =
         record
@@ -173,6 +185,9 @@ fn next_replace_item_action(record: &Record, item_map: &ItemMap) -> ActionResult
 }
 
 fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["take_item", "description"], &["required"], record)?;
     let items = items_from_record(record, "take_item", item_map)?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;

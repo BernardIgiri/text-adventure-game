@@ -70,7 +70,7 @@ impl<'a> Iterator for SectionRecordIter<'a> {
                 None => continue,
             };
             match get_record(input, properties) {
-                Ok(r) if r.section.trim().eq_ignore_ascii_case(self.1.trim()) => {
+                Ok(r) if r.section.trim() == self.1.trim() => {
                     return Some(Ok(r));
                 }
                 Err(e) => return Some(Err(e)),

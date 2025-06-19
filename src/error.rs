@@ -37,6 +37,8 @@ pub enum Application {
         entity: &'static str,
         id: String,
     },
+    #[error("Unknown section `{0}` found!")]
+    UnknownSectionFound(String),
 }
 
 #[derive(Debug)]

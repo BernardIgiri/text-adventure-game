@@ -40,6 +40,71 @@ pub mod data {
         ])
     }
 
+    pub fn response_map_with_items(action_map: &ActionMap, item_map: &ItemMap) -> ResponseMap {
+        ResponseMap::from([
+            (
+                i("goodbye"),
+                Rc::new(
+                    Response::builder()
+                        .text("Goodbye.".into())
+                        .requires(vec![])
+                        .build(),
+                ),
+            ),
+            (
+                i("hello"),
+                Rc::new(
+                    Response::builder()
+                        .text("Hello!".into())
+                        .requires(vec![])
+                        .build(),
+                ),
+            ),
+            (
+                i("im_sorry"),
+                Rc::new(
+                    Response::builder()
+                        .text("No, I don't I do...".into())
+                        .requires(vec![])
+                        .build(),
+                ),
+            ),
+            (
+                i("sure"),
+                Rc::new(
+                    Response::builder()
+                        .text("Well, one drink couldn't hurt!".into())
+                        .requires(vec![])
+                        .triggers(action_map.get(&i("robbed")).unwrap().clone())
+                        .build(),
+                ),
+            ),
+            (
+                i("you_have_it"),
+                Rc::new(
+                    Response::builder()
+                        .text("You found the ring!".into())
+                        .requires(vec![Requirement::HasItem(
+                            item_map.get(&i("ring")).unwrap().clone(),
+                        )])
+                        .build(),
+                ),
+            ),
+            (
+                i("you_have_both"),
+                Rc::new(
+                    Response::builder()
+                        .text("You found the ring and the key!".into())
+                        .requires(vec![
+                            Requirement::HasItem(item_map.get(&i("ring")).unwrap().clone()),
+                            Requirement::HasItem(item_map.get(&i("key")).unwrap().clone()),
+                        ])
+                        .build(),
+                ),
+            ),
+        ])
+    }
+
     pub fn response_map(action_map: &ActionMap) -> ResponseMap {
         ResponseMap::from([
             (
@@ -223,6 +288,14 @@ pub mod data {
         item_map: &ItemMap,
         room_map: &RoomMap,
     ) -> DialogueMap {
+        let mut hello_responses = vec![
+            response_map.get(&i("hello")).unwrap().clone(),
+            response_map.get(&i("goodbye")).unwrap().clone(),
+        ];
+        if response_map.contains_key(&i("you_have_it")) {
+            hello_responses.push(response_map.get(&i("you_have_it")).unwrap().clone());
+            hello_responses.push(response_map.get(&i("you_have_both")).unwrap().clone());
+        }
         DialogueMap::from([
             (
                 i("hello"),
@@ -232,10 +305,7 @@ pub mod data {
                         Rc::new(
                             Dialogue::builder()
                                 .text("Hiya stranger!".into())
-                                .responses(vec![
-                                    response_map.get(&i("hello")).unwrap().clone(),
-                                    response_map.get(&i("goodbye")).unwrap().clone(),
-                                ])
+                                .responses(hello_responses)
                                 .requires(vec![])
                                 .build(),
                         ),

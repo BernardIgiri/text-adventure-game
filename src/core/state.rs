@@ -3,7 +3,6 @@ use std::{
     rc::Rc,
 };
 
-use cursive::utils::Counter;
 use ini::Ini;
 
 use crate::{config_parser, error};
@@ -205,7 +204,7 @@ mod test {
     use asserting::prelude::*;
 
     use crate::config_parser::test_utils::data::{
-        action_map, character_map, dialogue_map, item_map, response_map, room_map,
+        action_map, character_map, dialogue_map, item_map, response_map_with_items, room_map,
     };
     use crate::config_parser::test_utils::{i, t};
     use crate::core::ItemMap;
@@ -225,16 +224,13 @@ mod test {
         )
     }
 
-    fn make_game() -> GameState {
-        make_game_custom_items(item_map())
-    }
-
-    fn make_game_custom_items(items: ItemMap) -> GameState {
+    fn make_game() -> (GameState, ItemMap) {
+        let items = item_map();
         let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
         let characters = character_map();
         let rooms = room_map(true);
         let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
+        let responses = response_map_with_items(&actions, &items);
         let dialogues = dialogue_map(&responses, &items, &rooms);
         let world = World::try_new(
             title,
@@ -245,77 +241,59 @@ mod test {
             responses.values().cloned().collect(),
         )
         .unwrap();
-        GameState::new(world)
-    }
-
-    fn make_game_custom_responses(items: ItemMap) -> GameState {
-        let title = GameTitle::new("".into(), "".into(), "".into(), t("WoodShed"));
-        let characters = character_map();
-        let rooms = room_map(true);
-        let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
-        let dialogues = dialogue_map(&responses, &items, &rooms);
-        let world = World::try_new(
-            title,
-            actions,
-            rooms,
-            dialogues,
-            characters.values().cloned().collect(),
-            responses.values().cloned().collect(),
-        )
-        .unwrap();
-        GameState::new(world)
+        (GameState::new(world), items)
     }
 
     #[test]
-    fn test_dialogue_responses_returns_all_when_no_requirements() {
-        let state = make_game();
+    fn test_dialogue_responses_returns_only_defaults_when_no_requirements_are_met() {
+        let (state, ..) = make_game();
         let dialogue = state.look_up_dialogue(&i("hello"));
         let responses = state.dialogue_responses(&dialogue);
-        assert!(!responses.is_empty());
-        for r in &responses {
-            assert!(r.requires().is_empty());
-        }
+        assert_that!(responses).satisfies_with_message("Excludes unexpected responses", |list| {
+            list.iter()
+                .all(|r| !r.text().contains("key") && !r.text().contains("ring"))
+        });
     }
 
     #[test]
-    fn test_dialogue_responses_filters_unmet_requirements() {
-        let mut items = item_map();
-        let mut state = make_game_custom_responses(items.clone());
-
-        let item = Rc::new(Item::new(i("invisible_cape"), "A rare item".into()));
-        let response = Rc::new(
-            Response::builder()
-                .text("You must be wearing the cape.".into())
-                .requires(vec![Requirement::HasItem(item.clone())])
-                .build(),
-        );
-        // let responses = state.dialogue_responses(&dialogue);
-        // assert!(!responses.contains(&response));
+    fn test_dialogue_responses_include_multiple_met_requirements() {
+        let (mut state, items) = make_game();
+        let required = [
+            items.get(&i("ring")).unwrap().clone(),
+            items.get(&i("key")).unwrap().clone(),
+        ];
+        state.inventory.extend(required);
+        let dialogue = state.look_up_dialogue(&i("hello"));
+        let responses = state.dialogue_responses(&dialogue);
+        assert_that!(responses.clone())
+            .satisfies_with_message("Includes first expected response", |list| {
+                list.iter().any(|r| r.text().contains("ring"))
+            });
+        assert_that!(responses)
+            .satisfies_with_message("Includes second expected response", |list| {
+                list.iter().any(|r| r.text().contains("key"))
+            });
     }
 
     #[test]
     fn test_dialogue_responses_includes_met_requirements() {
-        let mut items = item_map();
+        let (mut state, items) = make_game();
         let required = items.get(&i("ring")).unwrap().clone();
-        let mut state = make_game_custom_responses(items.clone());
-
-        let response = Rc::new(
-            Response::builder()
-                .text("Ah, you brought the ring.".into())
-                .requires(vec![Requirement::HasItem(required.clone())])
-                .build(),
-        );
-
         state.inventory.insert(required);
-
-        // let responses = state.dialogue_responses(&dialogue);
-        // assert!(responses.contains(&response));
+        let dialogue = state.look_up_dialogue(&i("hello"));
+        let responses = state.dialogue_responses(&dialogue);
+        assert_that!(responses.clone())
+            .satisfies_with_message("Includes expected responses", |list| {
+                list.iter().any(|r| r.text().contains("ring"))
+            });
+        assert_that!(responses).satisfies_with_message("Excludes unexpected responses", |list| {
+            list.iter().all(|r| !r.text().contains("key"))
+        });
     }
 
     #[test]
     fn test_look_up_dialogue_returns_variant_if_requirement_met() {
-        let mut state = make_game();
+        let (mut state, ..) = make_game();
         let dialogue_id = i("hello");
         state
             .active_room_variants
@@ -326,14 +304,14 @@ mod test {
 
     #[test]
     fn test_look_up_dialogue_falls_back_to_default_variant() {
-        let state = make_game();
+        let (state, ..) = make_game();
         let dialogue = state.look_up_dialogue(&i("hello"));
         assert!(dialogue.text().contains("Hiya stranger!"));
     }
 
     #[test]
     fn test_do_action_change_room() {
-        let mut state = make_game();
+        let (mut state, ..) = make_game();
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
         assert!(state.current_room().variant().clone().is_none());
@@ -364,9 +342,8 @@ mod test {
 
     #[test]
     fn test_do_action_change_room_with_requirements_unmet() {
-        let items = item_map();
+        let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
-        let mut state = make_game_custom_items(items);
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
         assert!(state.current_room().variant().clone().is_none());
@@ -395,9 +372,8 @@ mod test {
 
     #[test]
     fn test_do_action_change_room_with_requirements_nmet() {
-        let items = item_map();
+        let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
-        let mut state = make_game_custom_items(items);
         state.inventory.insert(item.clone());
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
@@ -426,7 +402,7 @@ mod test {
 
     #[test]
     fn test_room_variant_requirement_met() {
-        let mut state = make_game();
+        let (mut state, ..) = make_game();
         let room_name = t("WoodShed");
         let variant_name = i("closed");
         let req = Requirement::RoomVariant(make_room(room_name.clone(), None));

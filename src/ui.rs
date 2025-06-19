@@ -72,7 +72,7 @@ impl UI {
         let mut siv = Cursive::default();
         let mut siv_theme = Theme::default();
         let theme = UITheme {
-            title: Color::Rgb(240, 10, 10),
+            title: Color::Rgb(200, 150, 150),
             heading: Color::Rgb(80, 80, 210),
             background: Color::Rgb(0, 0, 0),
             text: Color::Rgb(240, 240, 240),

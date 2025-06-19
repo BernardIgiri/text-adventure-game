@@ -11,7 +11,9 @@ use clap::Parser;
 use config_parser::preprocess_to_ini_from_file;
 use core::GameState;
 use player::Player;
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
+use tracing::info;
+use tracing_subscriber::{fmt::writer::BoxMakeWriter, EnvFilter};
 use ui::*;
 
 #[derive(Parser)]
@@ -21,6 +23,13 @@ struct Args {
 }
 
 fn main() {
+    #[allow(clippy::expect_used)]
+    let file = File::create("game.log").expect("log file");
+    let writer = BoxMakeWriter::new(file);
+    tracing_subscriber::fmt()
+        .with_writer(writer)
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
     if let Err(e) = play() {
         eprintln!("Error: {}", e);
     }
@@ -31,13 +40,16 @@ fn main() {
 fn play() -> Result<(), error::Application> {
     use Player as P;
     let args = Args::parse();
+    info!("Loading data");
     let ini = preprocess_to_ini_from_file(args.file.as_path())
         .map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
     let mut state = GameState::from_ini(ini)?;
     let mut player = Player::Idle;
     let mut ui = UI::new();
+    info!("Staring game");
     ui.greet(state.title(), state.greeting());
     while player != P::GameOver {
+        info!("State {:#?}", player.clone());
         player = match player {
             P::Idle => {
                 let room = state.current_room();

@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use cursive::{
     align::HAlign,
-    theme::{BaseColor, BorderStyle, Color, Effect, PaletteColor, Style, Theme},
+    theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme},
     utils::{markup::StyledString, span::SpannedString},
     view::{IntoBoxedView, Resizable},
     views::{Button, DummyView, LinearLayout, SelectView, TextView},
@@ -53,35 +53,50 @@ struct UIState {
     choice: UIChoice,
 }
 
+pub struct UITheme {
+    title: Color,
+    heading: Color,
+    background: Color,
+    text: Color,
+    highlight: Color,
+    highlight_text: Color,
+}
+
 pub struct UI {
     siv: Cursive,
+    theme: UITheme,
 }
 
 impl UI {
     pub fn new() -> Self {
         let mut siv = Cursive::default();
-        let mut theme = Theme::default();
-        theme.palette[PaletteColor::Background] = Color::Dark(BaseColor::Black);
-        theme.palette[PaletteColor::View] = Color::Dark(BaseColor::Black);
-        theme.palette[PaletteColor::Primary] = Color::Light(BaseColor::White);
-        theme.palette[PaletteColor::TitlePrimary] = Color::Light(BaseColor::Yellow);
-        theme.palette[PaletteColor::Highlight] = Color::Rgb(40, 40, 40);
-        theme.palette[PaletteColor::HighlightText] = Color::Rgb(200, 200, 200);
-        theme.borders = BorderStyle::None;
-        siv.set_theme(theme);
+        let mut siv_theme = Theme::default();
+        let theme = UITheme {
+            title: Color::Rgb(240, 10, 10),
+            heading: Color::Rgb(80, 80, 210),
+            background: Color::Rgb(0, 0, 0),
+            text: Color::Rgb(240, 240, 240),
+            highlight: Color::Rgb(40, 40, 40),
+            highlight_text: Color::Rgb(255, 255, 80),
+        };
+        siv_theme.palette[PaletteColor::Background] = theme.background;
+        siv_theme.palette[PaletteColor::View] = theme.background;
+        siv_theme.palette[PaletteColor::Primary] = theme.text;
+        siv_theme.palette[PaletteColor::TitlePrimary] = theme.title;
+        siv_theme.palette[PaletteColor::Highlight] = theme.highlight;
+        siv_theme.palette[PaletteColor::HighlightText] = theme.highlight_text;
+        siv_theme.borders = BorderStyle::None;
+        siv.set_theme(siv_theme);
         siv.add_global_callback('q', |s| s.quit());
         siv.set_user_data(UIState {
             choice: UIChoice::None,
         });
-        Self { siv }
+        Self { siv, theme }
     }
 
     pub fn greet(&mut self, title: &str, greeting: &str) {
         let mut title_str = StyledString::new();
-        title_str.append_styled(
-            title,
-            Style::from(Color::Light(BaseColor::Red)).combine(Effect::Bold),
-        );
+        title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
         let title_view = TextView::new(title_str).h_align(HAlign::Center);
 
         let mut greeting_str = StyledString::new();
@@ -107,10 +122,7 @@ impl UI {
 
     pub fn roll_credits(&mut self, title: &str, credits: &str) {
         let mut title_str = StyledString::new();
-        title_str.append_styled(
-            title,
-            Style::from(Color::Light(BaseColor::Red)).combine(Effect::Bold),
-        );
+        title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
         let title_view = TextView::new(title_str).h_align(HAlign::Center);
 
         let mut credits_str = StyledString::new();
@@ -142,7 +154,7 @@ impl UI {
         exits: &[String],
         has_actions: bool,
     ) -> RoomChoice {
-        let (title, mut body) = prompt_header(room_name, room_description);
+        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
         let mut menu = SelectView::<RoomChoice>::new();
 
         if !characters.is_empty() {
@@ -200,7 +212,7 @@ impl UI {
         room_description: &str,
         characters: &[String],
     ) -> StartChatChoice {
-        let (title, mut body) = prompt_header(room_name, room_description);
+        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
         body.append_plain("Who will you talk to?");
         let mut menu = SelectView::<StartChatChoice>::new();
         for (i, choice) in characters.iter().enumerate() {
@@ -277,7 +289,7 @@ impl UI {
         room_description: &str,
         actions: &[String],
     ) -> InteractionChoice {
-        let (title, mut body) = prompt_header(room_name, room_description);
+        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
         body.append_plain("What will you do?");
         let mut menu = SelectView::<InteractionChoice>::new();
         for (i, choice) in actions.iter().enumerate() {
@@ -313,7 +325,11 @@ impl UI {
         } else {
             "Nothing happened..."
         };
-        let (title, body) = prompt_header(&action_name.to_case(Case::Title), description);
+        let (title, body) = prompt_header(
+            &action_name.to_case(Case::Title),
+            description,
+            self.theme.heading,
+        );
         let body_view = TextView::new(body).h_align(HAlign::Center);
         let pause = pause_for_any_key_view();
 
@@ -344,7 +360,7 @@ impl UI {
         room_description: &str,
         exits: &[String],
     ) -> LeaveChoice {
-        let (title, mut body) = prompt_header(room_name, room_description);
+        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
         body.append_plain("Which way will you go?");
         let mut menu = SelectView::<LeaveChoice>::new();
         for (i, choice) in exits.iter().enumerate() {
@@ -379,12 +395,13 @@ fn pause_for_any_key_view() -> Button {
     Button::new_raw("[ Continue... ]", |s| s.quit())
 }
 
-fn prompt_header(title_text: &str, description: &str) -> (TextView, SpannedString<Style>) {
+fn prompt_header(
+    title_text: &str,
+    description: &str,
+    title_color: Color,
+) -> (TextView, SpannedString<Style>) {
     let mut title = StyledString::new();
-    title.append_styled(
-        title_text,
-        Style::from(Color::Light(BaseColor::Blue)).combine(Effect::Bold),
-    );
+    title.append_styled(title_text, Style::from(title_color).combine(Effect::Bold));
     let title_view = TextView::new(title).h_align(HAlign::Center);
     let mut body = StyledString::new();
     body.append_plain(format!("{}\n\n", description));

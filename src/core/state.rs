@@ -43,6 +43,7 @@ impl GameState {
     pub fn enter_room(&mut self, room: Rc<Room>) {
         self.current_room = Some(room.name().clone());
     }
+    // TODO this needs to return the completed action
     pub fn trigger_response(&mut self, response: &Response) -> bool {
         response
             .triggers()

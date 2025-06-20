@@ -1,10 +1,9 @@
-use convert_case::{Case, Casing};
 use cursive::{
     align::HAlign,
     theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme},
-    utils::{markup::StyledString, span::SpannedString},
-    view::{IntoBoxedView, Resizable},
-    views::{Button, DummyView, LayerPosition, LinearLayout, SelectView, TextView},
+    utils::markup::StyledString,
+    view::{IntoBoxedView, Nameable, Resizable},
+    views::{self, Button, DummyView, LayerPosition, LinearLayout, SelectView, TextView},
     Cursive, CursiveExt,
 };
 
@@ -40,6 +39,7 @@ pub enum ChatChoice {
     Leave,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum UIChoice {
     None,
     InRoom(RoomChoice),
@@ -49,6 +49,18 @@ enum UIChoice {
     Leave(LeaveChoice),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MenuItem(String, UIChoice);
+
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+struct MenuScreen {
+    title: String,
+    body: String,
+    prompt: String,
+    menu: Vec<MenuItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct UIState {
     choice: UIChoice,
 }
@@ -65,6 +77,7 @@ pub struct UITheme {
 pub struct UI {
     siv: Cursive,
     theme: UITheme,
+    screen: MenuScreen,
 }
 
 impl UI {
@@ -91,9 +104,12 @@ impl UI {
         siv.set_user_data(UIState {
             choice: UIChoice::None,
         });
-        Self { siv, theme }
+        Self {
+            siv,
+            theme,
+            screen: MenuScreen::default(),
+        }
     }
-
     pub fn greet(&mut self, title: &str, greeting: &str) {
         let mut title_str = StyledString::new();
         title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
@@ -103,7 +119,7 @@ impl UI {
         greeting_str.append_plain(greeting);
         let greeting_view = TextView::new(greeting_str).h_align(HAlign::Center);
 
-        let pause = pause_for_any_key_view();
+        let pause = Self::pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
             .child(DummyView.full_height())
@@ -118,8 +134,8 @@ impl UI {
             .full_width();
         self.swap_layer(layout);
         self.siv.run();
+        self.switch_to_menu_screen();
     }
-
     pub fn roll_credits(&mut self, title: &str, credits: &str) {
         let mut title_str = StyledString::new();
         title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
@@ -129,7 +145,7 @@ impl UI {
         credits_str.append_plain(credits);
         let credits_view = TextView::new(credits_str).h_align(HAlign::Center);
 
-        let pause = pause_for_any_key_view();
+        let pause = Self::pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
             .child(DummyView.full_height())
@@ -145,7 +161,6 @@ impl UI {
         self.swap_layer(layout);
         self.siv.run();
     }
-
     pub fn present_room(
         &mut self,
         room_name: &str,
@@ -154,47 +169,41 @@ impl UI {
         exits: &[String],
         has_actions: bool,
     ) -> RoomChoice {
-        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
-        let mut menu = SelectView::<RoomChoice>::new();
-
+        let mut menu = Vec::new();
+        let mut body = String::new();
+        body.push_str(room_description);
         if !characters.is_empty() {
-            body.append_styled("There are people here:\n", Effect::Bold);
-            for name in characters {
-                body.append_plain(format!("- {}\n", name.to_case(Case::Title)));
-            }
-            body.append_plain("\n");
-            menu.add_item("Talk", RoomChoice::Chat);
+            body.push_str("There are people here:\n");
+            body.push_str(&characters.join(", "));
+            body.push('\n');
+            menu.push(MenuItem("Talk".into(), UIChoice::InRoom(RoomChoice::Chat)));
         }
-
         if has_actions {
-            menu.add_item("Interact", RoomChoice::Interact);
+            menu.push(MenuItem(
+                "Interact".into(),
+                UIChoice::InRoom(RoomChoice::Interact),
+            ));
         }
-
         if !exits.is_empty() {
-            body.append_styled("Your exits are:\n", Effect::Bold);
-            for exit in exits {
-                body.append_plain(format!("- {}\n", exit.to_case(Case::Title)));
-            }
-            body.append_plain("\n");
-            menu.add_item("Go somewhere else", RoomChoice::Leave);
+            body.push_str("Your exits are:\n");
+            body.push_str(&exits.join(", "));
+            body.push('\n');
+            menu.push(MenuItem(
+                "Go somewhere else".into(),
+                UIChoice::InRoom(RoomChoice::Leave),
+            ));
+        } else {
+            menu.push(MenuItem(
+                "End game".into(),
+                UIChoice::InRoom(RoomChoice::GameOver),
+            ));
         }
-
-        body.append_plain("What would you like to do?");
-
-        let body_view = TextView::new(body).h_align(HAlign::Left);
-
-        menu.add_item("End game", RoomChoice::GameOver);
-        menu.set_on_submit(|siv, selected| {
-            siv.with_user_data(|data: &mut UIState| {
-                data.choice = UIChoice::InRoom(selected.clone());
-            });
-            siv.quit();
+        self.show_menu(MenuScreen {
+            title: room_name.into(),
+            prompt: "What would you like to do?".into(),
+            body,
+            menu,
         });
-
-        let layout = menu_layout(title, body_view, menu);
-
-        self.swap_layer(layout);
-        self.siv.run();
         if let Some(UIState {
             choice: UIChoice::InRoom(choice),
             ..
@@ -205,32 +214,27 @@ impl UI {
             panic!("Expected choice in room prompt!");
         }
     }
-
     pub fn present_chat_targets(
         &mut self,
         room_name: &str,
         room_description: &str,
         characters: &[String],
     ) -> StartChatChoice {
-        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
-        body.append_plain("Who will you talk to?");
-        let mut menu = SelectView::<StartChatChoice>::new();
-        for (i, choice) in characters.iter().enumerate() {
-            menu.add_item(choice.to_case(Case::Title), StartChatChoice::TalkTo(i));
-        }
-        menu.set_on_submit(|siv, selected| {
-            siv.with_user_data(|data: &mut UIState| {
-                data.choice = UIChoice::StartChat(selected.clone());
-            });
-            siv.quit();
+        let mut menu = characters
+            .iter()
+            .enumerate()
+            .map(|(i, c)| MenuItem(c.into(), UIChoice::StartChat(StartChatChoice::TalkTo(i))))
+            .collect::<Vec<_>>();
+        menu.push(MenuItem(
+            "No one".into(),
+            UIChoice::StartChat(StartChatChoice::NoOne),
+        ));
+        self.show_menu(MenuScreen {
+            title: room_name.into(),
+            prompt: "Who will you talk to?".into(),
+            body: room_description.into(),
+            menu,
         });
-        menu.add_item("No one", StartChatChoice::NoOne);
-
-        let body_view = TextView::new(body).h_align(HAlign::Left);
-        let layout = menu_layout(title, body_view, menu);
-
-        self.swap_layer(layout);
-        self.siv.run();
         if let Some(UIState {
             choice: UIChoice::StartChat(choice),
             ..
@@ -241,37 +245,29 @@ impl UI {
             panic!("Expected character in chat select!");
         }
     }
-
     pub fn present_chat(
         &mut self,
         character_name: &str,
         dialogue: &str,
         responses: &[String],
     ) -> ChatChoice {
-        let title_view = TextView::new(character_name).h_align(HAlign::Center);
-        let mut menu = SelectView::<ChatChoice>::new();
-        for (i, choice) in responses.iter().enumerate() {
-            menu.add_item(choice, ChatChoice::RespondWith(i));
-        }
-        menu.set_on_submit(|siv, selected| {
-            siv.with_user_data(|data: &mut UIState| {
-                data.choice = UIChoice::InChat(selected.clone());
-            });
-            siv.quit();
-        });
+        let mut menu = responses
+            .iter()
+            .enumerate()
+            .map(|(i, c)| MenuItem(c.into(), UIChoice::InChat(ChatChoice::RespondWith(i))))
+            .collect::<Vec<_>>();
         if responses.is_empty() {
-            menu.add_item("Nothing", ChatChoice::Leave);
+            menu.push(MenuItem(
+                "Nothing".into(),
+                UIChoice::InChat(ChatChoice::Leave),
+            ));
         }
-
-        let mut body = StyledString::new();
-        body.append_plain(dialogue);
-        body.append_plain("\nYou Say:");
-        let body_view = TextView::new(body).h_align(HAlign::Left);
-
-        let layout = menu_layout(title_view, body_view, menu);
-
-        self.swap_layer(layout);
-        self.siv.run();
+        self.show_menu(MenuScreen {
+            title: character_name.into(),
+            prompt: "You say:".into(),
+            body: dialogue.into(),
+            menu,
+        });
         if let Some(UIState {
             choice: UIChoice::InChat(choice),
             ..
@@ -282,32 +278,27 @@ impl UI {
             panic!("Expected response in chat prompt!");
         }
     }
-
     pub fn present_action_select(
         &mut self,
         room_name: &str,
         room_description: &str,
         actions: &[String],
     ) -> InteractionChoice {
-        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
-        body.append_plain("What will you do?");
-        let mut menu = SelectView::<InteractionChoice>::new();
-        for (i, choice) in actions.iter().enumerate() {
-            menu.add_item(choice.to_case(Case::Sentence), InteractionChoice::Do(i));
-        }
-        menu.set_on_submit(|siv, selected| {
-            siv.with_user_data(|data: &mut UIState| {
-                data.choice = UIChoice::Interact(selected.clone())
-            });
-            siv.quit();
+        let mut menu = actions
+            .iter()
+            .enumerate()
+            .map(|(i, c)| MenuItem(c.into(), UIChoice::Interact(InteractionChoice::Do(i))))
+            .collect::<Vec<_>>();
+        menu.push(MenuItem(
+            "Nothing".into(),
+            UIChoice::Interact(InteractionChoice::Nothing),
+        ));
+        self.show_menu(MenuScreen {
+            title: room_name.into(),
+            prompt: "Who will you talk to?".into(),
+            body: room_description.into(),
+            menu,
         });
-        menu.add_item("Nothing", InteractionChoice::Nothing);
-
-        let body_view = TextView::new(body).h_align(HAlign::Left);
-        let layout = menu_layout(title, body_view, menu);
-
-        self.swap_layer(layout);
-        self.siv.run();
         if let Some(UIState {
             choice: UIChoice::Interact(choice),
             ..
@@ -325,33 +316,12 @@ impl UI {
         } else {
             "Nothing happened..."
         };
-        let (title, body) = prompt_header(
-            &action_name.to_case(Case::Title),
-            description,
-            self.theme.heading,
-        );
-        let body_view = TextView::new(body).h_align(HAlign::Center);
-        let pause = pause_for_any_key_view();
-
-        let layout = LinearLayout::vertical()
-            .child(DummyView.full_height())
-            .weight(1)
-            .child(title)
-            .child(DummyView.fixed_height(1))
-            .child(body_view)
-            .child(DummyView.fixed_height(1))
-            .child(pause)
-            .child(DummyView.full_height())
-            .weight(1)
-            .full_width();
-        let layout = LinearLayout::horizontal()
-            .child(DummyView.full_width())
-            .weight(1)
-            .child(layout)
-            .child(DummyView.full_width())
-            .weight(1);
-        self.swap_layer(layout);
-        self.siv.run();
+        self.show_menu(MenuScreen {
+            title: action_name.into(),
+            prompt: "".into(),
+            body: description.into(),
+            menu: vec![MenuItem("Continue...".into(), UIChoice::None)],
+        });
     }
 
     pub fn present_exit_select(
@@ -360,25 +330,18 @@ impl UI {
         room_description: &str,
         exits: &[String],
     ) -> LeaveChoice {
-        let (title, mut body) = prompt_header(room_name, room_description, self.theme.heading);
-        body.append_plain("Which way will you go?");
-        let mut menu = SelectView::<LeaveChoice>::new();
-        for (i, choice) in exits.iter().enumerate() {
-            menu.add_item(choice.to_case(Case::Title), LeaveChoice::GoTo(i));
-        }
-        menu.set_on_submit(|siv, selected| {
-            siv.with_user_data(|data: &mut UIState| {
-                data.choice = UIChoice::Leave(selected.clone())
-            });
-            siv.quit();
+        let mut menu = exits
+            .iter()
+            .enumerate()
+            .map(|(i, c)| MenuItem(c.into(), UIChoice::Leave(LeaveChoice::GoTo(i))))
+            .collect::<Vec<_>>();
+        menu.push(MenuItem("Stay".into(), UIChoice::Leave(LeaveChoice::Stay)));
+        self.show_menu(MenuScreen {
+            title: room_name.into(),
+            prompt: "Which way will you go?".into(),
+            body: room_description.into(),
+            menu,
         });
-        menu.add_item("Stay", LeaveChoice::Stay);
-
-        let body_view = TextView::new(body).h_align(HAlign::Left);
-        let layout = menu_layout(title, body_view, menu);
-
-        self.swap_layer(layout);
-        self.siv.run();
         if let Some(UIState {
             choice: UIChoice::Leave(choice),
             ..
@@ -400,43 +363,79 @@ impl UI {
                 .remove_layer(LayerPosition::FromBack(0));
         }
     }
-}
-
-fn pause_for_any_key_view() -> Button {
-    Button::new_raw("[ Continue... ]", |s| s.quit())
-}
-
-fn prompt_header(
-    title_text: &str,
-    description: &str,
-    title_color: Color,
-) -> (TextView, SpannedString<Style>) {
-    let mut title = StyledString::new();
-    title.append_styled(title_text, Style::from(title_color).combine(Effect::Bold));
-    let title_view = TextView::new(title).h_align(HAlign::Center);
-    let mut body = StyledString::new();
-    body.append_plain(format!("{}\n\n", description));
-    (title_view, body)
-}
-
-fn menu_layout<V: IntoBoxedView + 'static>(
-    title: TextView,
-    body: TextView,
-    menu: V,
-) -> LinearLayout {
-    let layout = LinearLayout::vertical()
-        .child(DummyView.full_height())
-        .weight(1)
-        .child(title)
-        .child(DummyView.fixed_height(1))
-        .child(body)
-        .child(menu)
-        .child(DummyView.full_height())
-        .weight(1);
-    LinearLayout::horizontal()
-        .child(DummyView.full_width())
-        .weight(1)
-        .child(layout)
-        .child(DummyView.full_width())
-        .weight(1)
+    fn show_menu(&mut self, screen: MenuScreen) {
+        if self.screen.title != screen.title {
+            self.siv.call_on_name("title", |v: &mut views::TextView| {
+                let mut styled = StyledString::new();
+                styled.append_styled(
+                    screen.title.as_str(),
+                    Style::from(self.theme.heading).combine(Effect::Bold),
+                );
+                v.set_content(styled);
+            });
+        }
+        if self.screen.body != screen.body {
+            self.siv.call_on_name("body", |v: &mut views::TextView| {
+                let mut styled = StyledString::new();
+                styled.append_plain(screen.body.as_str());
+                v.set_content(styled);
+            });
+        }
+        if self.screen.prompt != screen.prompt {
+            self.siv.call_on_name("prompt", |v: &mut views::TextView| {
+                let mut styled = StyledString::new();
+                styled.append_plain(screen.prompt.as_str());
+                v.set_content(styled);
+            });
+        }
+        self.siv
+            .call_on_name("menu", |v: &mut views::SelectView<UIChoice>| {
+                v.clear();
+                for MenuItem(text, value) in &screen.menu {
+                    v.add_item(text.as_str(), value.clone());
+                }
+            });
+        self.screen = screen;
+        self.siv.run();
+    }
+    fn switch_to_menu_screen(&mut self) {
+        let title = TextView::new(StyledString::new())
+            .h_align(HAlign::Center)
+            .with_name("title");
+        let body = TextView::new(StyledString::new())
+            .h_align(HAlign::Left)
+            .with_name("body");
+        let prompt = TextView::new(StyledString::new())
+            .h_align(HAlign::Left)
+            .with_name("prompt");
+        let mut menu = SelectView::<UIChoice>::new();
+        menu.set_on_submit(|siv, selected| {
+            siv.with_user_data(|data: &mut UIState| {
+                data.choice = selected.clone();
+            });
+            siv.quit();
+        });
+        let menu = menu.with_name("menu");
+        let layout = LinearLayout::vertical()
+            .child(DummyView.full_height())
+            .weight(1)
+            .child(title)
+            .child(DummyView.fixed_height(1))
+            .child(body)
+            .child(DummyView.fixed_height(1))
+            .child(prompt)
+            .child(menu)
+            .child(DummyView.full_height())
+            .weight(1);
+        let layout = LinearLayout::horizontal()
+            .child(DummyView.full_width())
+            .weight(1)
+            .child(layout)
+            .child(DummyView.full_width())
+            .weight(1);
+        self.swap_layer(layout);
+    }
+    fn pause_for_any_key_view() -> Button {
+        Button::new_raw("[ Continue... ]", |s| s.quit())
+    }
 }

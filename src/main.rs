@@ -17,6 +17,7 @@ use tracing_subscriber::{fmt::writer::BoxMakeWriter, EnvFilter};
 use ui::*;
 
 #[derive(Parser)]
+#[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
     file: PathBuf,

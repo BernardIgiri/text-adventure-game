@@ -1,3 +1,4 @@
+use convert_case::Casing;
 use cursive::{
     align::HAlign,
     theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme},
@@ -72,6 +73,7 @@ pub struct UITheme {
     text: Color,
     highlight: Color,
     highlight_text: Color,
+    subdued: Color,
 }
 
 pub struct UI {
@@ -86,11 +88,12 @@ impl UI {
         let mut siv_theme = Theme::default();
         let theme = UITheme {
             title: Color::Rgb(200, 150, 150),
-            heading: Color::Rgb(80, 80, 210),
+            heading: Color::Rgb(110, 110, 255),
             background: Color::Rgb(0, 0, 0),
             text: Color::Rgb(240, 240, 240),
             highlight: Color::Rgb(40, 40, 40),
             highlight_text: Color::Rgb(255, 255, 80),
+            subdued: Color::Rgb(60, 60, 60),
         };
         siv_theme.palette[PaletteColor::Background] = theme.background;
         siv_theme.palette[PaletteColor::View] = theme.background;
@@ -172,8 +175,9 @@ impl UI {
         let mut menu = Vec::new();
         let mut body = String::new();
         body.push_str(room_description);
+        body.push_str("\n\n");
         if !characters.is_empty() {
-            body.push_str("There are people here:\n");
+            body.push_str("There are people here: ");
             body.push_str(&characters.join(", "));
             body.push('\n');
             menu.push(MenuItem("Talk".into(), UIChoice::InRoom(RoomChoice::Chat)));
@@ -185,8 +189,14 @@ impl UI {
             ));
         }
         if !exits.is_empty() {
-            body.push_str("Your exits are:\n");
-            body.push_str(&exits.join(", "));
+            body.push_str("Your exits are: ");
+            body.push_str(
+                &exits
+                    .iter()
+                    .map(|s| s.to_string().to_case(convert_case::Case::Title))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
             body.push('\n');
             menu.push(MenuItem(
                 "Go somewhere else".into(),
@@ -264,7 +274,7 @@ impl UI {
         }
         self.show_menu(MenuScreen {
             title: character_name.into(),
-            prompt: "You say:".into(),
+            prompt: "How will you respond?".into(),
             body: dialogue.into(),
             menu,
         });
@@ -287,7 +297,12 @@ impl UI {
         let mut menu = actions
             .iter()
             .enumerate()
-            .map(|(i, c)| MenuItem(c.into(), UIChoice::Interact(InteractionChoice::Do(i))))
+            .map(|(i, c)| {
+                MenuItem(
+                    c.to_string().to_case(convert_case::Case::Title),
+                    UIChoice::Interact(InteractionChoice::Do(i)),
+                )
+            })
             .collect::<Vec<_>>();
         menu.push(MenuItem(
             "Nothing".into(),
@@ -295,7 +310,7 @@ impl UI {
         ));
         self.show_menu(MenuScreen {
             title: room_name.into(),
-            prompt: "Who will you talk to?".into(),
+            prompt: "What will you do?".into(),
             body: room_description.into(),
             menu,
         });
@@ -314,10 +329,10 @@ impl UI {
         let description = if success {
             action_description
         } else {
-            "Nothing happened..."
+            "It didn't work."
         };
         self.show_menu(MenuScreen {
-            title: action_name.into(),
+            title: action_name.to_string().to_case(convert_case::Case::Title),
             prompt: "".into(),
             body: description.into(),
             menu: vec![MenuItem("Continue...".into(), UIChoice::None)],
@@ -333,7 +348,12 @@ impl UI {
         let mut menu = exits
             .iter()
             .enumerate()
-            .map(|(i, c)| MenuItem(c.into(), UIChoice::Leave(LeaveChoice::GoTo(i))))
+            .map(|(i, c)| {
+                MenuItem(
+                    c.to_string().to_case(convert_case::Case::Title),
+                    UIChoice::Leave(LeaveChoice::GoTo(i)),
+                )
+            })
             .collect::<Vec<_>>();
         menu.push(MenuItem("Stay".into(), UIChoice::Leave(LeaveChoice::Stay)));
         self.show_menu(MenuScreen {
@@ -416,6 +436,12 @@ impl UI {
             siv.quit();
         });
         let menu = menu.with_name("menu");
+        let mut notice = StyledString::new();
+        notice.append_styled(
+            "Press 'q' at any time to quit!",
+            Style::from(self.theme.subdued),
+        );
+        let notice = TextView::new(notice).h_align(HAlign::Center);
         let layout = LinearLayout::vertical()
             .child(DummyView.full_height())
             .weight(1)
@@ -426,7 +452,9 @@ impl UI {
             .child(prompt)
             .child(menu)
             .child(DummyView.full_height())
-            .weight(1);
+            .weight(1)
+            .child(notice)
+            .child(DummyView.fixed_height(1));
         let layout = LinearLayout::horizontal()
             .child(DummyView.full_width())
             .weight(1)

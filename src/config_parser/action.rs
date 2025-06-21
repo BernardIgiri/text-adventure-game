@@ -8,7 +8,8 @@ use crate::{
         types::RoomVariant,
     },
     core::{
-        Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, TakeItem, Teleport, Title,
+        Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, Sequence, TakeItem, Teleport,
+        Title,
     },
     error,
 };
@@ -38,6 +39,8 @@ pub fn parse_actions<'a>(
             next_give_item_action(&record, item_map)
         } else if record.properties.contains_key("take_item") {
             next_take_item_action(&record, item_map)
+        } else if record.properties.contains_key("sequence") {
+            next_sequence_action(&record, item_map)
         } else {
             Err(error::EntityDataIncomplete("Action"))
         }?;
@@ -205,6 +208,33 @@ fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
     )))
 }
 
+fn next_sequence_action(record: &Record, item_map: &ItemMap) -> ActionResult {
+    record
+        .properties
+        .expect_keys(&["sequence", "description"], &["required"], record)?;
+    let actions = record
+        .properties
+        .get("sequence")
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().parse::<Identifier>())
+        .collect::<Result<Vec<Identifier>, error::Application>>()?;
+    let description = record.properties.require("description", record)?;
+    let required = required_item_from_record(record, item_map)?;
+    let name = record.name.parse::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::Sequence(
+            Sequence::builder()
+                .name(name)
+                .description(description.into())
+                .maybe_required(required)
+                .actions(actions)
+                .build(),
+        ),
+    )))
+}
+
 fn items_from_record<'a>(
     record: &'a Record<'a>,
     prop: &'static str,
@@ -284,7 +314,7 @@ mod test {
     ";
 
     #[test]
-    fn test_good_data() {
+    fn good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let items = item_map();
         let rooms = room_map(true);

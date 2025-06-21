@@ -60,69 +60,11 @@ impl GameState {
     }
     pub fn do_action(&mut self, action: &Action) -> bool {
         info!("do_action({:#?})", action);
-        use Action::*;
-        match action {
-            ChangeRoom(c) => {
-                if let Some(r) = c.required() {
-                    if !self.inventory.contains(r) {
-                        return false;
-                    } else {
-                        self.inventory.remove(r);
-                    }
-                }
-                let room = c.room();
-                if let Some(v) = room.variant() {
-                    self.active_room_variants
-                        .insert(room.name().clone(), v.clone());
-                } else {
-                    self.active_room_variants.remove(room.name());
-                }
-                true
-            }
-            GiveItem(g) => {
-                if g.items().iter().all(|i| self.inventory.contains(i)) {
-                    for i in g.items() {
-                        self.inventory.remove(i);
-                    }
-                    true
-                } else {
-                    false
-                }
-            }
-            ReplaceItem(r) => {
-                if self.inventory.contains(r.original()) {
-                    self.inventory.remove(r.original());
-                    self.inventory.insert(r.replacement().clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            TakeItem(t) => {
-                if let Some(r) = t.required() {
-                    if !self.inventory.contains(r) {
-                        return false;
-                    } else {
-                        self.inventory.remove(r);
-                    }
-                }
-                self.inventory.extend(t.items().clone());
-                true
-            }
-            Teleport(t) => {
-                if let Some(r) = t.required() {
-                    if !self.inventory.contains(r) {
-                        return false;
-                    } else {
-                        self.inventory.remove(r);
-                    }
-                }
-                self.enter_room(
-                    self.look_up_room(t.room_name())
-                        .expect("All Rooms should exists in the world!"),
-                );
-                true
-            }
+        if self.action_requirement_met(action) {
+            self.complete_action(action);
+            true
+        } else {
+            false
         }
     }
     pub fn current_room(&self) -> Rc<Room> {
@@ -215,6 +157,93 @@ impl GameState {
             }
         }
     }
+    fn action_requirement_met(&self, action: &Action) -> bool {
+        let mut required = Vec::new();
+        use Action::*;
+        match action {
+            GiveItem(g) => {
+                required.extend(g.items());
+            }
+            ChangeRoom(c) => {
+                if let Some(r) = c.required() {
+                    required.push(r);
+                }
+            }
+            ReplaceItem(r) => {
+                required.push(r.original());
+            }
+            TakeItem(t) => {
+                if let Some(r) = t.required() {
+                    required.push(r);
+                }
+            }
+            Teleport(t) => {
+                if let Some(r) = t.required() {
+                    required.push(r);
+                }
+            }
+            Sequence(s) => {
+                if let Some(r) = s.required() {
+                    required.push(r);
+                }
+            }
+        }
+        required.iter().all(|r| self.inventory.contains(&**r))
+    }
+    fn complete_action(&mut self, action: &Action) {
+        use Action::*;
+        match action {
+            ChangeRoom(c) => {
+                if let Some(r) = c.required() {
+                    self.inventory.remove(r);
+                }
+                let room = c.room();
+                if let Some(v) = room.variant() {
+                    self.active_room_variants
+                        .insert(room.name().clone(), v.clone());
+                } else {
+                    self.active_room_variants.remove(room.name());
+                }
+            }
+            GiveItem(g) => {
+                for i in g.items() {
+                    self.inventory.remove(i);
+                }
+            }
+            ReplaceItem(r) => {
+                self.inventory.remove(r.original());
+                self.inventory.insert(r.replacement().clone());
+            }
+            TakeItem(t) => {
+                if let Some(r) = t.required() {
+                    self.inventory.remove(r);
+                }
+                self.inventory.extend(t.items().clone());
+            }
+            Teleport(t) => {
+                if let Some(r) = t.required() {
+                    self.inventory.remove(r);
+                }
+                self.enter_room(
+                    self.look_up_room(t.room_name())
+                        .expect("All Rooms should exists in the world!"),
+                );
+            }
+            Sequence(s) => {
+                if let Some(r) = s.required() {
+                    self.inventory.remove(r);
+                }
+                let refs = SequenceRefs::new(s);
+                let action_map = self.world.actions().clone();
+                for id in refs.actions() {
+                    let a = action_map
+                        .get(id)
+                        .expect("All actions should be in the world!");
+                    self.complete_action(a);
+                }
+            }
+        }
+    }
 }
 
 // Allowed in tests
@@ -268,7 +297,7 @@ mod test {
     }
 
     #[test]
-    fn test_dialogue_responses_returns_only_defaults_when_no_requirements_are_met() {
+    fn dialogue_responses_returns_only_defaults_when_no_requirements_are_met() {
         let (state, ..) = make_game();
         let dialogue = state.look_up_dialogue(&i("hello"));
         let responses = state.dialogue_responses(&dialogue);
@@ -279,7 +308,7 @@ mod test {
     }
 
     #[test]
-    fn test_dialogue_responses_include_multiple_met_requirements() {
+    fn dialogue_responses_include_multiple_met_requirements() {
         let (mut state, items) = make_game();
         let required = [
             items.get(&i("ring")).unwrap().clone(),
@@ -299,7 +328,7 @@ mod test {
     }
 
     #[test]
-    fn test_dialogue_responses_includes_met_requirements() {
+    fn dialogue_responses_includes_met_requirements() {
         let (mut state, items) = make_game();
         let required = items.get(&i("ring")).unwrap().clone();
         state.inventory.insert(required);
@@ -315,7 +344,7 @@ mod test {
     }
 
     #[test]
-    fn test_look_up_dialogue_returns_variant_if_requirement_met() {
+    fn look_up_dialogue_returns_variant_if_requirement_met() {
         let (mut state, ..) = make_game();
         let dialogue_id = i("hello");
         state
@@ -326,14 +355,14 @@ mod test {
     }
 
     #[test]
-    fn test_look_up_dialogue_falls_back_to_default_variant() {
+    fn look_up_dialogue_falls_back_to_default_variant() {
         let (state, ..) = make_game();
         let dialogue = state.look_up_dialogue(&i("hello"));
         assert!(dialogue.text().contains("Hiya stranger!"));
     }
 
     #[test]
-    fn test_do_action_change_room() {
+    fn do_action_change_room() {
         let (mut state, ..) = make_game();
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
@@ -364,7 +393,7 @@ mod test {
     }
 
     #[test]
-    fn test_do_action_change_room_with_requirements_unmet() {
+    fn do_action_change_room_with_requirements_unmet() {
         let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
         let id = t("WoodShed");
@@ -394,7 +423,7 @@ mod test {
     }
 
     #[test]
-    fn test_do_action_change_room_with_requirements_nmet() {
+    fn do_action_change_room_with_requirements_nmet() {
         let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
         state.inventory.insert(item.clone());
@@ -424,7 +453,7 @@ mod test {
     }
 
     #[test]
-    fn test_do_action_teleport() {
+    fn do_action_teleport() {
         let (mut state, ..) = make_game();
         let id = t("Field");
         state.current_room = Some(t("WoodShed"));
@@ -442,7 +471,7 @@ mod test {
     }
 
     #[test]
-    fn test_room_variant_requirement_met() {
+    fn room_variant_requirement_met() {
         let (mut state, ..) = make_game();
         let room_name = t("WoodShed");
         let variant_name = i("closed");

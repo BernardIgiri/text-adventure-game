@@ -53,7 +53,7 @@ mod test {
             ";
 
     #[test]
-    fn test_parse_characters_success() {
+    fn parse_characters_success() {
         let ini = Ini::load_from_str(GOOD_CHARACTER_DATA).unwrap();
         let characters = parse_characters(ini.iter()).unwrap();
         assert_eq!(characters.len(), 3);
@@ -66,7 +66,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_characters_missing_field() {
+    fn parse_characters_missing_field() {
         let ini = Ini::load_from_str(BAD_CHARACTER_DATA).unwrap();
         let characters = parse_characters(ini.iter());
 

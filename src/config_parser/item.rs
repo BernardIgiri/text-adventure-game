@@ -71,7 +71,7 @@ mod test {
             ";
 
     #[test]
-    fn test_parse_items() {
+    fn parse_items_good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let items = parse_items(ini.iter()).unwrap();
         assert_eq!(items.len(), 4);
@@ -103,7 +103,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_bad_data() {
+    fn parse_item_bad_data() {
         let ini = Ini::load_from_str(BAD_DATA).unwrap();
         let items = parse_items(ini.iter());
         assert!(items.is_err());

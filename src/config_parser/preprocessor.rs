@@ -97,7 +97,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_multiline_preprocessing() {
+    fn multiline_preprocessing() {
         let raw = r#"
 [Room:LivingRoom]
 description="""
@@ -116,7 +116,7 @@ exits=east:Basement
     }
 
     #[test]
-    fn test_preprocess_to_ini() {
+    fn preprocess_to_ini_valid_string() {
         let raw = r#"
 [Dialogue:Intro]
 text="""
@@ -134,7 +134,7 @@ responses=ask_name,ask_place
     }
 
     #[test]
-    fn test_preprocess_to_ini_malfored_string() {
+    fn preprocess_to_ini_malfored_string() {
         let raw = r#"
 [Dialogue:Intro]
 text="""
@@ -151,7 +151,7 @@ responses=ask_name,ask_place
     }
 
     #[test]
-    fn test_preprocess_to_ini_malfored_string_too_many_quotes() {
+    fn preprocess_to_ini_malfored_string_too_many_quotes() {
         let raw = r#"
 [Dialogue:Intro]
 text="""

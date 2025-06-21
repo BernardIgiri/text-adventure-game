@@ -118,7 +118,7 @@ mod test {
     use asserting::prelude::*;
 
     #[test]
-    fn test_parse_has_item_requirement() {
+    fn parse_has_item_requirement() {
         let items = item_map();
         let rooms = room_map(true);
 
@@ -145,7 +145,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_does_not_have_requirement() {
+    fn parse_does_not_have_requirement() {
         let items = item_map();
         let rooms = room_map(true);
 
@@ -172,7 +172,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_room_variant_requirement() {
+    fn parse_room_variant_requirement() {
         let items = item_map();
         let rooms = room_map(true);
 
@@ -203,7 +203,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_room_variant_default_requirement() {
+    fn parse_room_variant_default_requirement() {
         let items = item_map();
         let rooms = room_map(true);
 
@@ -231,7 +231,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_invalid_requirement_type() {
+    fn parse_invalid_requirement_type() {
         let items = item_map();
         let rooms = room_map(true);
 

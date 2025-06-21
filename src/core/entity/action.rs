@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use bon::Builder;
 use derive_getters::Getters;
+use derive_new::new;
 
 use super::{
     invariant::Identifier,
@@ -12,7 +13,10 @@ use super::{
 macro_rules! define_action {
     (
         $name:ident {
-            $($field:ident : $type:ty),* $(,)?
+            $(
+                $(#[$meta:meta])*
+                $field:ident : $type:ty
+            ),* $(,)?
         }
     ) => {
         // Both ChangeRoom and TakeItem falsely report that required is unused
@@ -23,6 +27,7 @@ macro_rules! define_action {
             name: Identifier,
             description: String,
             $(
+                $(#[$meta])*
                 $field: $type,
             )*
         }
@@ -53,6 +58,12 @@ define_action!(Teleport {
     room_name: Title,
 });
 
+define_action!(Sequence {
+    required: Option<Rc<Item>>,
+    #[getter(skip)]
+    actions: Vec<Identifier>,
+});
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     ChangeRoom(ChangeRoom),
@@ -60,6 +71,7 @@ pub enum Action {
     ReplaceItem(ReplaceItem),
     TakeItem(TakeItem),
     Teleport(Teleport),
+    Sequence(Sequence),
 }
 
 impl Action {
@@ -70,6 +82,7 @@ impl Action {
             Self::ReplaceItem(replace_item) => replace_item.name(),
             Self::TakeItem(take_item) => take_item.name(),
             Self::Teleport(teleport) => teleport.name(),
+            Self::Sequence(chain) => chain.name(),
         }
     }
     pub fn description(&self) -> &String {
@@ -79,6 +92,16 @@ impl Action {
             Self::ReplaceItem(replace_item) => replace_item.description(),
             Self::TakeItem(take_item) => take_item.description(),
             Self::Teleport(teleport) => teleport.description(),
+            Self::Sequence(chain) => chain.description(),
         }
+    }
+}
+
+#[derive(new)]
+pub struct SequenceRefs<'a>(&'a Sequence);
+
+impl<'a> SequenceRefs<'a> {
+    pub const fn actions(&self) -> &Vec<Identifier> {
+        &self.0.actions
     }
 }

@@ -93,7 +93,7 @@ impl UI {
             text: Color::Rgb(240, 240, 240),
             highlight: Color::Rgb(40, 40, 40),
             highlight_text: Color::Rgb(255, 255, 80),
-            subdued: Color::Rgb(60, 60, 60),
+            subdued: Color::Rgb(127, 127, 127),
         };
         siv_theme.palette[PaletteColor::Background] = theme.background;
         siv_theme.palette[PaletteColor::View] = theme.background;

@@ -131,7 +131,7 @@ mod test {
     ";
 
     #[test]
-    fn test_good_data() {
+    fn good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let characters = character_map();
         let rooms = parse_rooms(ini.iter(), &characters).unwrap();
@@ -143,7 +143,7 @@ mod test {
     }
 
     #[test]
-    fn test_bad_data() {
+    fn bad_data() {
         let ini = Ini::load_from_str(BAD_DATA).unwrap();
         let characters = character_map();
         let rooms = parse_rooms(ini.iter(), &characters);

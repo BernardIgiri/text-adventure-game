@@ -73,7 +73,7 @@ mod test {
     ";
 
     #[test]
-    fn test_good_data() {
+    fn good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let title = parse_title(&ini).unwrap();
         assert_eq!(title.title(), &"The Beach Trip".to_string());
@@ -83,7 +83,7 @@ mod test {
     }
 
     #[test]
-    fn test_missing_start_room() {
+    fn missing_start_room() {
         let ini = Ini::load_from_str(BAD_DATA_NO_START).unwrap();
         let result = parse_title(&ini);
         assert!(
@@ -92,14 +92,14 @@ mod test {
     }
 
     #[test]
-    fn test_empty_data() {
+    fn empty_data() {
         let ini = Ini::load_from_str(BAD_DATA_EMPTY).unwrap();
         let result = parse_title(&ini);
         assert!(matches!(result, Err(error::PropertyNotFound { .. })));
     }
 
     #[test]
-    fn test_bad_start_room_name() {
+    fn bad_start_room_name() {
         let ini = Ini::load_from_str(BAD_DATA_BAD_START).unwrap();
         let result = parse_title(&ini);
         assert!(matches!(result, Err(error::IllegalConversion { .. })));

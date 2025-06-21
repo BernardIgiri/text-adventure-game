@@ -25,7 +25,7 @@ struct Args {
 
 fn main() {
     #[allow(clippy::expect_used)]
-    let file = File::create("game.log").expect("log file");
+    let file = File::create("game.log").expect("Could not write to required log file!");
     let writer = BoxMakeWriter::new(file);
     tracing_subscriber::fmt()
         .with_writer(writer)

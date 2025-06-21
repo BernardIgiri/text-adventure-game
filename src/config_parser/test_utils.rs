@@ -19,7 +19,7 @@ pub mod data {
         config_parser::types::{CharacterMap, ItemMap, ResponseMap},
         core::{
             Action, ActionMap, ChangeRoom, Character, Dialogue, DialogueMap, GiveItem, Item,
-            ReplaceItem, Requirement, Response, Room, RoomMap, TakeItem,
+            ReplaceItem, Requirement, Response, Room, RoomMap, Sequence, TakeItem,
         },
     };
 
@@ -278,6 +278,29 @@ pub mod data {
                         .required(item_map.get(&i("lever")).unwrap().clone())
                         .room(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())
                         .build()
+                )
+            )
+        ), (
+            i("open_door"),
+            Rc::new(
+                Action::ChangeRoom(
+                    ChangeRoom::builder()
+                        .name(i("open_door"))
+                        .description("The door bursts open".into())
+                        .room(room_map.get(&t("WoodShed")).unwrap().get(&None).unwrap().clone())
+                        .build()
+                )
+            )
+        ), (
+            i("multiple"),
+            Rc::new(
+                Action::Sequence(
+                    Sequence::builder()
+                    .name(i("multiple"))
+                    .description("Multiple things happen".into())
+                    .required(item_map.get(&i("ring")).unwrap().clone())
+                    .actions(vec![i("open_door"),i("open_chest")])
+                    .build()
                 )
             )
         )])

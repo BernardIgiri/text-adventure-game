@@ -5,8 +5,8 @@ use derive_getters::Getters;
 use crate::error;
 
 use super::{
-    entity::{CharacterRefs, ResponseRefs, RoomRefs},
-    ActionMap, Character, DialogueMap, GameTitle, Response, RoomMap,
+    entity::{CharacterRefs, ResponseRefs, RoomRefs, SequenceRefs},
+    Action, ActionMap, Character, DialogueMap, GameTitle, Response, RoomMap,
 };
 
 #[derive(Debug, Getters)]
@@ -77,6 +77,28 @@ impl World {
         if !rooms.contains_key(title.start_room()) {
             missing_room_ids.push(title.start_room().to_string());
         }
+        for a in actions.values() {
+            if let Action::Sequence(s) = &**a {
+                let sref = SequenceRefs::new(s);
+                let m = sref
+                    .actions()
+                    .iter()
+                    .filter(|id| !actions.contains_key(id))
+                    .map(|id| id.to_string());
+                missing_action_ids.extend(m);
+                if let Some(child_id) = sref
+                    .actions()
+                    .iter()
+                    .find(|id| matches!(actions.get(id).map(|a| &**a), Some(Action::Sequence(_))))
+                {
+                    return Err(error::CircularReferenceFound {
+                        entity: "Action::Sequence",
+                        parent_id: s.name().to_string(),
+                        child_id: child_id.to_string(),
+                    });
+                }
+            }
+        }
         let mut missing = Vec::new();
         if !missing_dialogue_ids.is_empty() {
             missing.push(error::MissingEntityGroup {
@@ -119,7 +141,7 @@ mod test {
         action_map, character_map, dialogue_map, item_map, response_map, room_map,
     };
     use crate::config_parser::test_utils::{i, t};
-    use crate::core::{CharacterMap, ResponseMap};
+    use crate::core::{CharacterMap, ResponseMap, Sequence};
 
     use super::*;
 
@@ -179,6 +201,39 @@ mod test {
         assert_that!(world.unwrap_err().to_string())
             .contains("Action")
             .contains("pull_lever");
+    }
+
+    #[test]
+    fn try_new_fails_when_a_referenced_action_in_sequence_is_missing() {
+        let mut data = WorldData::new();
+        data.actions.remove(&i("open_door"));
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Action")
+            .contains("open_door");
+    }
+
+    #[test]
+    fn try_new_fails_when_an_action_sequence_has_a_circular_reference() {
+        let mut data = WorldData::new();
+        data.actions.insert(
+            i("bad_action"),
+            Rc::new(Action::Sequence(
+                Sequence::builder()
+                    .name(i("bad_action"))
+                    .description("".into())
+                    .actions(vec![i("multiple")])
+                    .build(),
+            )),
+        );
+        let world = data.world_from_data();
+        assert!(world.is_err());
+        assert_that!(world.unwrap_err().to_string())
+            .contains("Action")
+            .contains("circular")
+            .contains("bad_action")
+            .contains("multiple");
     }
 
     #[test]

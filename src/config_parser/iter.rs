@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn test_require_success() {
+    fn require_success() {
         let props = make_properties(&[("description", "A golden ring.")]);
         let record = make_record("Item", "ring", &props);
 
@@ -226,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_require_failure() {
+    fn require_failure() {
         let props = make_properties(&[]);
         let record = make_record("Item", "ring", &props);
 
@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expect_keys_success_with_optional() {
+    fn expect_keys_success_with_optional() {
         let props = make_properties(&[("description", "A ring"), ("weight", "5")]);
         let record = make_record("Item", "ring", &props);
 
@@ -255,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expect_keys_success_required_only() {
+    fn expect_keys_success_required_only() {
         let props = make_properties(&[("description", "A ring")]);
         let record = make_record("Item", "ring", &props);
 
@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expect_keys_missing_required() {
+    fn expect_keys_missing_required() {
         let props = make_properties(&[("weight", "5")]);
         let record = make_record("Item", "ring", &props);
 
@@ -288,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expect_keys_unexpected_extra_key() {
+    fn expect_keys_unexpected_extra_key() {
         let props =
             make_properties(&[("description", "A ring"), ("weight", "5"), ("color", "red")]);
         let record = make_record("Item", "ring", &props);

@@ -22,7 +22,7 @@ pub enum Application {
     IllegalConversion { value: String, dtype: &'static str },
     #[error("Name/id matches not found for entities: `{0:?}`")]
     EntityReferencesNotFound(Vec<String>),
-    #[error("Incomplete data for entity `{0}`")]
+    #[error("Incomplete data for entity `{0}`. A field could be missing or mispelled.")]
     EntityDataIncomplete(&'static str),
     #[error("Missing entity references:\n{0:?}\n")]
     MultipleMissingEntities(Vec<MissingEntityGroup>),
@@ -41,6 +41,12 @@ pub enum Application {
     UnknownSectionFound(String),
     #[error("Malformed multiline string found on lines {0}! Make sure you have the correct number of \"'s")]
     MalformedMultilineString(String),
+    #[error("Found potential circular reference in `{entity}` with id `{parent_id}` from link to child `{child_id}`")]
+    CircularReferenceFound {
+        entity: &'static str,
+        parent_id: String,
+        child_id: String,
+    },
 }
 
 #[derive(Debug)]

@@ -5,8 +5,8 @@ mod world;
 use std::{collections::HashMap, rc::Rc};
 
 pub use entity::{
-    Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, Item, ReplaceItem,
-    Requirement, Response, Room, Sequence, TakeItem, Teleport, Title,
+    Action, ChangeRoom, Character, Dialogue, GameTitle, GiveItem, Identifier, IllegalConversion,
+    Item, ReplaceItem, Requirement, Response, Room, Sequence, TakeItem, Teleport, Title,
 };
 pub use state::GameState;
 pub use world::World;

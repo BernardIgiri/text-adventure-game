@@ -38,7 +38,12 @@ pub fn parse_rooms<'a>(
                         id: record.qualified_name.into(),
                     })?
                     .trim()
-                    .parse::<Identifier>()?;
+                    .parse::<Identifier>()
+                    .map_err(|source| error::ConversionFailed {
+                        etype: "Room",
+                        property: "exit:<direction>",
+                        source,
+                    })?;
                 let room = parts
                     .next()
                     .ok_or_else(|| error::PropertyNotFound {
@@ -47,7 +52,12 @@ pub fn parse_rooms<'a>(
                         id: record.qualified_name.into(),
                     })?
                     .trim()
-                    .parse::<Title>()?;
+                    .parse::<Title>()
+                    .map_err(|source| error::ConversionFailed {
+                        etype: "Room",
+                        property: "exit=direction:<room>",
+                        source,
+                    })?;
                 Ok((direction, room))
             })
             .collect::<Result<HashMap<Identifier, Title>, error::Application>>()?;
@@ -56,7 +66,15 @@ pub fn parse_rooms<'a>(
             .get_list("characters")
             .map(|character_name| {
                 Ok(character_map
-                    .get(&character_name.parse()?)
+                    .get(
+                        &character_name
+                            .parse()
+                            .map_err(|source| error::ConversionFailed {
+                                etype: "Room",
+                                property: "characters",
+                                source,
+                            })?,
+                    )
                     .ok_or_else(|| error::EntityNotFound {
                         etype: "Character",
                         id: character_name.into(),
@@ -68,8 +86,20 @@ pub fn parse_rooms<'a>(
             .properties
             .get_list("actions")
             .map(|s| s.parse::<Identifier>())
-            .collect::<Result<Vec<Identifier>, error::Application>>()?;
-        let name = record.name.parse::<Title>()?;
+            .collect::<Result<Vec<Identifier>, _>>()
+            .map_err(|source| error::ConversionFailed {
+                etype: "Room",
+                property: "actions",
+                source,
+            })?;
+        let name = record
+            .name
+            .parse::<Title>()
+            .map_err(|source| error::ConversionFailed {
+                etype: "Room",
+                property: "name",
+                source,
+            })?;
         let room = Rc::new(
             Room::builder()
                 .name(name.clone())

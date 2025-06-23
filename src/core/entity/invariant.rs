@@ -1,10 +1,16 @@
 use convert_case::{Case, Casing};
-use derive_more::{AsRef, Display};
+use derive_more::{AsRef, Debug, Display};
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::IntoStaticStr;
+use thiserror::Error;
 
-use crate::error;
+#[derive(Error, Debug, Display)]
+#[display("Cannot convert `{value}` to type {dtype}")]
+pub struct IllegalConversion {
+    value: String,
+    dtype: &'static str,
+}
 
 #[derive(IntoStaticStr, Display, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EntityName {
@@ -13,13 +19,13 @@ pub enum EntityName {
 }
 
 impl TryInto<Identifier> for EntityName {
-    type Error = error::Application;
+    type Error = IllegalConversion;
 
     fn try_into(self) -> Result<Identifier, Self::Error> {
         if let Self::Identifier(i) = &self {
             Ok(i.clone())
         } else {
-            Err(error::IllegalConversion {
+            Err(IllegalConversion {
                 value: self.to_string(),
                 dtype: "Identifier(id)",
             })
@@ -28,13 +34,13 @@ impl TryInto<Identifier> for EntityName {
 }
 
 impl TryInto<Title> for EntityName {
-    type Error = error::Application;
+    type Error = IllegalConversion;
 
     fn try_into(self) -> Result<Title, Self::Error> {
         if let Self::Title(i) = &self {
             Ok(i.clone())
         } else {
-            Err(error::IllegalConversion {
+            Err(IllegalConversion {
                 value: self.to_string(),
                 dtype: "Title(id)",
             })
@@ -53,7 +59,7 @@ static TITLE_RX: LazyLock<Regex> =
 pub struct Identifier(String);
 
 impl Identifier {
-    pub fn parse(s: &str) -> Result<Self, error::Application> {
+    pub fn parse(s: &str) -> Result<Self, IllegalConversion> {
         s.parse()
     }
     pub const fn as_str(&self) -> &str {
@@ -62,13 +68,13 @@ impl Identifier {
 }
 
 impl FromStr for Identifier {
-    type Err = error::Application;
+    type Err = IllegalConversion;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if IDENTIFIER_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Snake)))
         } else {
-            Err(error::IllegalConversion {
+            Err(IllegalConversion {
                 value: s.into(),
                 dtype: "Identifier",
             })
@@ -80,7 +86,7 @@ impl FromStr for Identifier {
 pub struct Title(String);
 
 impl Title {
-    pub fn parse(s: &str) -> Result<Self, error::Application> {
+    pub fn parse(s: &str) -> Result<Self, IllegalConversion> {
         s.parse()
     }
     pub const fn as_str(&self) -> &str {
@@ -89,13 +95,13 @@ impl Title {
 }
 
 impl FromStr for Title {
-    type Err = error::Application;
+    type Err = IllegalConversion;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if TITLE_RX.is_match(s) {
             Ok(Self(s.to_case(Case::Title)))
         } else {
-            Err(error::IllegalConversion {
+            Err(IllegalConversion {
                 value: s.into(),
                 dtype: "Title",
             })

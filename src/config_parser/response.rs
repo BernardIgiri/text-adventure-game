@@ -27,13 +27,23 @@ pub fn parse_responses<'a>(
             .expect_keys(&["text"], &["leads_to", "triggers", "requires"], &record)?;
         let text = record.properties.require("text", &record)?;
         let leads_to = match record.properties.get("leads_to") {
-            Some(s) => Some(s.parse()?),
+            Some(s) => Some(s.parse().map_err(|source| error::ConversionFailed {
+                etype: "Response",
+                property: "leads_to",
+                source,
+            })?),
             None => None,
         };
         let action = match record.properties.get("triggers") {
             Some(action_name) => Some(
                 action_map
-                    .get(&action_name.parse::<Identifier>()?)
+                    .get(&action_name.parse::<Identifier>().map_err(|source| {
+                        error::ConversionFailed {
+                            etype: "Response",
+                            property: "triggers",
+                            source,
+                        }
+                    })?)
                     .ok_or_else(|| error::EntityNotFound {
                         etype: "Action",
                         id: action_name.into(),
@@ -51,7 +61,17 @@ pub fn parse_responses<'a>(
                 .requires(requires)
                 .build(),
         );
-        map.insert(record.name.parse()?, response);
+        map.insert(
+            record
+                .name
+                .parse()
+                .map_err(|source| error::ConversionFailed {
+                    etype: "Response",
+                    property: "name",
+                    source,
+                })?,
+            response,
+        );
     }
     Ok(map)
 }

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    iter::{title_variant_from_qualified, ListProperty, Record},
+    iter::{title_and_variant_from_qualified, ListProperty, Record},
     types::{ItemMap, RoomMap, RoomVariant},
 };
 
@@ -44,7 +44,14 @@ fn parse_one_requirement(
                 property: "requires:has_item:<item_id>",
                 id: record.qualified_name.into(),
             })?;
-            let item_name: Identifier = item_name.parse()?;
+            let item_name: Identifier =
+                item_name
+                    .parse()
+                    .map_err(|source| error::ConversionFailed {
+                        etype: entity_type,
+                        property: "requires:has_item:<item_id>",
+                        source,
+                    })?;
             let item = item_map
                 .get(&item_name)
                 .cloned()
@@ -61,7 +68,14 @@ fn parse_one_requirement(
                 property: "requires:does_not_have:<item_id>",
                 id: record.qualified_name.into(),
             })?;
-            let item_name: Identifier = item_name.parse()?;
+            let item_name: Identifier =
+                item_name
+                    .parse()
+                    .map_err(|source| error::ConversionFailed {
+                        etype: entity_type,
+                        property: "requires:does_not_have:<item_id>",
+                        source,
+                    })?;
             let item = item_map
                 .get(&item_name)
                 .cloned()
@@ -78,7 +92,7 @@ fn parse_one_requirement(
                 property: "requires:room_variant:<room>",
                 id: record.qualified_name.into(),
             })?;
-            let (room_name, variant) = title_variant_from_qualified(qualified_name)?;
+            let (room_name, variant) = title_and_variant_from_qualified(qualified_name)?;
             let room =
                 room_map
                     .get_room(&room_name, &variant)

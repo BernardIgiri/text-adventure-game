@@ -28,7 +28,14 @@ pub fn parse_items<'a>(ini_iter: SectionIter<'a>) -> Result<ItemMap, error::Appl
                     property: "description",
                     id: record.qualified_name.into(),
                 })?;
-        let name = record.name.parse::<Identifier>()?;
+        let name = record
+            .name
+            .parse::<Identifier>()
+            .map_err(|source| error::ConversionFailed {
+                etype: "Item",
+                property: "name",
+                source,
+            })?;
         let item = Rc::new(Item::new(name.clone(), description.to_string()));
         map.insert(name, item);
     }

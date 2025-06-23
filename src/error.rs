@@ -18,10 +18,13 @@ pub enum Application {
     EntityNotFound { etype: &'static str, id: String },
     #[error("Failed to load file due to: {0}")]
     CouldNotLoadFile(String),
-    #[error("Cannot convert `{value}` to `{dtype}`")]
-    IllegalConversion { value: String, dtype: &'static str },
-    #[error("Name/id matches not found for entities: `{0:?}`")]
-    EntityReferencesNotFound(Vec<String>),
+    #[error("Conversion failed for `{etype}` at property `{property}` with `{source}`")]
+    ConversionFailed {
+        etype: &'static str,
+        property: &'static str,
+        #[source]
+        source: IllegalConversion,
+    },
     #[error("Incomplete data for entity `{0}`. A field could be missing or mispelled.")]
     EntityDataIncomplete(&'static str),
     #[error("Missing entity references:\n{0:?}\n")]
@@ -62,3 +65,5 @@ impl Display for MissingEntityGroup {
 }
 
 pub use Application::*;
+
+use crate::core::IllegalConversion;

@@ -78,11 +78,23 @@ fn next_change_room_action(
                 id: record.qualified_name.into(),
             })?
             .trim()
-            .parse::<Title>()?;
-        let variant = match parts.next() {
-            Some(v) => Some(v.trim().parse::<Identifier>()?),
-            None => None,
-        };
+            .parse::<Title>()
+            .map_err(|source| error::ConversionFailed {
+                etype: "Action",
+                property: "change_room:<RoomName>",
+                source,
+            })?;
+        let variant =
+            match parts.next() {
+                Some(v) => Some(v.trim().parse::<Identifier>().map_err(|source| {
+                    error::ConversionFailed {
+                        etype: "Action",
+                        property: "change_room:RoomName-><variant>",
+                        source,
+                    }
+                })?),
+                None => None,
+            };
         (room_name, variant)
     };
     let description = record.properties.require("description", record)?;
@@ -91,7 +103,14 @@ fn next_change_room_action(
         None => return Ok(None),
     };
     let required = required_item_from_record(record, item_map)?;
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::ChangeRoom(
@@ -109,17 +128,32 @@ fn next_teleport_action(record: &Record, item_map: &ItemMap) -> ActionResult {
     record
         .properties
         .expect_keys(&["teleport_to", "description"], &["required"], record)?;
-    let room_name = record.properties.require("teleport_to", record)?;
+    let room_name = record
+        .properties
+        .require("teleport_to", record)?
+        .parse::<Title>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "teleport_to",
+            source,
+        })?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::Teleport(
             Teleport::builder()
                 .name(name)
                 .description(description.into())
-                .room_name(room_name.parse()?)
+                .room_name(room_name)
                 .maybe_required(required)
                 .build(),
         ),
@@ -132,7 +166,14 @@ fn next_give_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
         .expect_keys(&["give_item", "description"], &[], record)?;
     let items = items_from_record(record, "give_item", item_map)?;
     let description = record.properties.require("description", record)?;
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::GiveItem(
@@ -165,15 +206,26 @@ fn next_replace_item_action(record: &Record, item_map: &ItemMap) -> ActionResult
         property: "replace_item:<original>",
         id: record.qualified_name.into(),
     })?;
-    let original = require_item_from_map(original, item_map)?;
+    let original = require_item_from_map(original, item_map, "replace_item:<original>")?;
     let replacement = parts.next().ok_or_else(|| error::PropertyNotFound {
         entity: "Action",
         property: "replace_item:original-><replacement>",
         id: record.qualified_name.into(),
     })?;
-    let replacement = require_item_from_map(replacement, item_map)?;
+    let replacement = require_item_from_map(
+        replacement,
+        item_map,
+        "replace_item:original-><replacement>",
+    )?;
 
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::ReplaceItem(
@@ -194,7 +246,14 @@ fn next_take_item_action(record: &Record, item_map: &ItemMap) -> ActionResult {
     let items = items_from_record(record, "take_item", item_map)?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::TakeItem(
@@ -218,10 +277,22 @@ fn next_sequence_action(record: &Record, item_map: &ItemMap) -> ActionResult {
         .unwrap_or_default()
         .split(',')
         .map(|s| s.trim().parse::<Identifier>())
-        .collect::<Result<Vec<Identifier>, error::Application>>()?;
+        .collect::<Result<Vec<Identifier>, _>>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "sequence",
+            source,
+        })?;
     let description = record.properties.require("description", record)?;
     let required = required_item_from_record(record, item_map)?;
-    let name = record.name.parse::<Identifier>()?;
+    let name = record
+        .name
+        .parse::<Identifier>()
+        .map_err(|source| error::ConversionFailed {
+            etype: "Action",
+            property: "name",
+            source,
+        })?;
     Ok(Some((
         name.clone(),
         Action::Sequence(
@@ -245,7 +316,7 @@ fn items_from_record<'a>(
         .require(prop, record)?
         .split(',')
         .map(str::trim)
-        .map(|item_name| require_item_from_map(item_name, item_map))
+        .map(|item_name| require_item_from_map(item_name, item_map, prop))
         .collect()
 }
 
@@ -255,7 +326,9 @@ fn required_item_from_record<'a>(
 ) -> Result<Option<Rc<Item>>, error::Application> {
     let required = record.properties.get("required").filter(|s| !s.is_empty());
     match required {
-        Some(item_name) => Ok(Some(require_item_from_map(item_name, item_map)?)),
+        Some(item_name) => Ok(Some(require_item_from_map(
+            item_name, item_map, "required",
+        )?)),
         None => Ok(None),
     }
 }
@@ -263,9 +336,18 @@ fn required_item_from_record<'a>(
 fn require_item_from_map(
     item_name: &str,
     item_map: &ItemMap,
+    property_name: &'static str,
 ) -> Result<Rc<Item>, error::Application> {
     Ok(item_map
-        .get(&item_name.parse()?)
+        .get(
+            &item_name
+                .parse()
+                .map_err(|source| error::ConversionFailed {
+                    etype: "Action",
+                    property: property_name,
+                    source,
+                })?,
+        )
         .ok_or_else(|| error::EntityNotFound {
             etype: "Item",
             id: item_name.into(),

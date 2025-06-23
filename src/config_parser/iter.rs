@@ -18,14 +18,22 @@ pub enum EntitySection {
     Room,
 }
 
-pub fn title_variant_from_qualified(
+pub fn title_and_variant_from_qualified(
     s: &str,
 ) -> Result<(Title, Option<Identifier>), error::Application> {
-    let (name, variant) = unparsed_variant_from_qualified(s)?;
-    Ok((name.parse::<Title>()?, variant))
+    let (name, variant) = title_str_and_variant_from_qualified(s)?;
+    Ok((
+        name.parse::<Title>()
+            .map_err(|source| error::ConversionFailed {
+                etype: "Unknown",
+                property: "name",
+                source,
+            })?,
+        variant,
+    ))
 }
 
-pub fn unparsed_variant_from_qualified(
+pub fn title_str_and_variant_from_qualified(
     s: &str,
 ) -> Result<(&str, Option<Identifier>), error::Application> {
     let mut parts = s.splitn(2, '|');
@@ -37,7 +45,17 @@ pub fn unparsed_variant_from_qualified(
         })?
         .trim();
     let variant = match parts.next() {
-        Some(v) => Some(v.trim().parse::<Identifier>()?),
+        Some(v) => {
+            Some(
+                v.trim()
+                    .parse::<Identifier>()
+                    .map_err(|source| error::ConversionFailed {
+                        etype: "Unknown",
+                        property: "variant",
+                        source,
+                    })?,
+            )
+        }
         None => None,
     };
     Ok((name, variant))
@@ -100,7 +118,7 @@ fn get_record<'a>(
             field: "Qualified Entitity Name",
         })?
         .trim();
-    let (name, variant) = unparsed_variant_from_qualified(qualified_name)?;
+    let (name, variant) = title_str_and_variant_from_qualified(qualified_name)?;
     Ok(Record {
         section,
         name,

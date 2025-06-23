@@ -5,32 +5,32 @@ use crate::{core::GameTitle, error};
 pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
     let top_level = ini
         .section(None::<String>)
-        .ok_or(error::EntitySectionNotFound("Top Level"))?;
+        .ok_or(error::EntitySectionNotFound(""))?;
     let title = top_level
         .get("title")
         .ok_or_else(|| error::PropertyNotFound {
-            entity: "Top Level",
+            entity: "",
             property: "title",
             id: "n/a".into(),
         })?;
     let greeting = top_level
         .get("greeting")
         .ok_or_else(|| error::PropertyNotFound {
-            entity: "Top Level",
+            entity: "",
             property: "greeting",
             id: "n/a".into(),
         })?;
     let credits = top_level
         .get("credits")
         .ok_or_else(|| error::PropertyNotFound {
-            entity: "Top Level",
+            entity: "",
             property: "credits",
             id: "n/a".into(),
         })?;
     let start_room = top_level
         .get("start_room")
         .ok_or_else(|| error::PropertyNotFound {
-            entity: "Top Level",
+            entity: "",
             property: "start_room",
             id: "n/a".into(),
         })?;
@@ -38,7 +38,13 @@ pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
         title.into(),
         greeting.into(),
         credits.into(),
-        start_room.parse()?,
+        start_room
+            .parse()
+            .map_err(|source| error::ConversionFailed {
+                etype: "",
+                property: "start_room",
+                source,
+            })?,
     ))
 }
 
@@ -102,6 +108,6 @@ mod test {
     fn bad_start_room_name() {
         let ini = Ini::load_from_str(BAD_DATA_BAD_START).unwrap();
         let result = parse_title(&ini);
-        assert!(matches!(result, Err(error::IllegalConversion { .. })));
+        assert!(matches!(result, Err(error::ConversionFailed { .. })));
     }
 }

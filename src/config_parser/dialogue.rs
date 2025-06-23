@@ -31,7 +31,11 @@ pub fn parse_dialogues(
             .get_list("response")
             .map(|s| {
                 Ok(response_map
-                    .get(&s.parse()?)
+                    .get(&s.parse().map_err(|source| error::ConversionFailed {
+                        etype: "Dialogue",
+                        property: "response",
+                        source,
+                    })?)
                     .ok_or_else(|| error::EntityNotFound {
                         etype: "Response",
                         id: s.into(),
@@ -39,7 +43,7 @@ pub fn parse_dialogues(
                     .clone())
             })
             .collect::<Result<Vec<Rc<Response>>, error::Application>>()?;
-        let requires = parse_requirements(&record, "Response", item_map, room_map)?;
+        let requires = parse_requirements(&record, "Dialogue", item_map, room_map)?;
         let dialogue = Rc::new(
             Dialogue::builder()
                 .text(text.into())
@@ -47,9 +51,18 @@ pub fn parse_dialogues(
                 .requires(requires)
                 .build(),
         );
-        map.entry(record.name.parse()?)
-            .or_default()
-            .insert(record.variant.clone(), dialogue);
+        map.entry(
+            record
+                .name
+                .parse()
+                .map_err(|source| error::ConversionFailed {
+                    etype: "Dialogue",
+                    property: "name",
+                    source,
+                })?,
+        )
+        .or_default()
+        .insert(record.variant.clone(), dialogue);
     }
     Ok(map)
 }

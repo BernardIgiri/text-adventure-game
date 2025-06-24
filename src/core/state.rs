@@ -41,6 +41,12 @@ impl GameState {
     pub fn credits(&self) -> &String {
         self.world.title().credits()
     }
+    pub fn theme(&self) -> Rc<Theme> {
+        self.world.theme().clone()
+    }
+    pub fn language(&self) -> Rc<Language> {
+        self.world.language().clone()
+    }
     pub fn enter_room(&mut self, room: Rc<Room>) {
         self.current_room = Some(room.name().clone());
     }
@@ -284,15 +290,17 @@ mod test {
         let actions = action_map(&rooms, &items);
         let responses = response_map_with_items(&actions, &items);
         let dialogues = dialogue_map(&responses, &items, &rooms);
-        let world = World::try_new(
-            title,
-            actions,
-            rooms,
-            dialogues,
-            characters.values().cloned().collect(),
-            responses.values().cloned().collect(),
-        )
-        .unwrap();
+        let world = World::try_new()
+            .title(title)
+            .theme(Theme::default())
+            .language(Language::default())
+            .actions(actions)
+            .rooms(rooms)
+            .dialogues(dialogues)
+            .characters(characters.values().cloned().collect())
+            .responses(responses.values().cloned().collect())
+            .call()
+            .unwrap();
         (GameState::new(world), items)
     }
 

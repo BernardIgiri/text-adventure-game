@@ -8,34 +8,16 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, RecordProperty, SectionRecordIter},
+    iter::{EntitySection, SectionRecordIter},
     types::ItemMap,
 };
 
 pub fn parse_items<'a>(ini_iter: SectionIter<'a>) -> Result<ItemMap, error::Application> {
     let mut map = ItemMap::new();
-    for record in SectionRecordIter::new(ini_iter, EntitySection::Item.into()) {
-        let record = record?;
-        record
-            .properties
-            .expect_keys(&["description"], &[], &record)?;
-        let description =
-            record
-                .properties
-                .get("description")
-                .ok_or_else(|| error::PropertyNotFound {
-                    entity: "Item",
-                    property: "description",
-                    id: record.qualified_name.into(),
-                })?;
-        let name = record
-            .name
-            .parse::<Identifier>()
-            .map_err(|source| error::ConversionFailed {
-                etype: "Item",
-                property: "name",
-                source,
-            })?;
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Item) {
+        let record = record?.into_record(&["description"], &[])?;
+        let description = record.require("description")?;
+        let name = record.parse_name::<Identifier>()?;
         let item = Rc::new(Item::new(name.clone(), description.to_string()));
         map.insert(name, item);
     }

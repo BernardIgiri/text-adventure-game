@@ -17,6 +17,8 @@ derive_more = { version = "2.0.1", features = ["full"] }
 cursive = "0.21.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
+csscolorparser = "0.7.2"
 
 [dev-dependencies]
 asserting = "0.8.0"
+pretty_assertions = "1.4.1"

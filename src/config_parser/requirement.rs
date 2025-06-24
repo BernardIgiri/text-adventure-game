@@ -4,26 +4,23 @@ use crate::{
 };
 
 use super::{
-    iter::{title_and_variant_from_qualified, ListProperty, Record},
+    iter::Record,
     types::{ItemMap, RoomMap, RoomVariant},
 };
 
 pub fn parse_requirements(
     record: &Record,
-    entity_type: &'static str,
     item_map: &ItemMap,
     room_map: &RoomMap,
 ) -> Result<Vec<Requirement>, error::Application> {
     record
-        .properties
         .get_list("requires")
-        .map(|s| parse_one_requirement(record, entity_type, item_map, room_map, s))
+        .map(|s| parse_one_requirement(record, item_map, room_map, s))
         .collect()
 }
 
 fn parse_one_requirement(
     record: &Record,
-    entity_type: &'static str,
     item_map: &ItemMap,
     room_map: &RoomMap,
     string: &str,
@@ -32,23 +29,23 @@ fn parse_one_requirement(
     let r_type = parts
         .next()
         .ok_or_else(|| error::PropertyNotFound {
-            entity: entity_type,
+            entity: record.entity_type(),
             property: "requires:<requirement_type>",
-            id: record.qualified_name.into(),
+            id: record.qualified_name().into(),
         })?
         .to_lowercase();
     let requirement = match r_type.as_str() {
         "has_item" => {
             let item_name = parts.next().ok_or_else(|| error::PropertyNotFound {
-                entity: entity_type,
+                entity: record.entity_type(),
                 property: "requires:has_item:<item_id>",
-                id: record.qualified_name.into(),
+                id: record.qualified_name().into(),
             })?;
             let item_name: Identifier =
                 item_name
                     .parse()
                     .map_err(|source| error::ConversionFailed {
-                        etype: entity_type,
+                        etype: record.entity_type(),
                         property: "requires:has_item:<item_id>",
                         source,
                     })?;
@@ -64,15 +61,15 @@ fn parse_one_requirement(
         }
         "does_not_have" => {
             let item_name = parts.next().ok_or_else(|| error::PropertyNotFound {
-                entity: entity_type,
+                entity: record.entity_type(),
                 property: "requires:does_not_have:<item_id>",
-                id: record.qualified_name.into(),
+                id: record.qualified_name().into(),
             })?;
             let item_name: Identifier =
                 item_name
                     .parse()
                     .map_err(|source| error::ConversionFailed {
-                        etype: entity_type,
+                        etype: record.entity_type(),
                         property: "requires:does_not_have:<item_id>",
                         source,
                     })?;
@@ -88,11 +85,11 @@ fn parse_one_requirement(
         }
         "room_variant" => {
             let qualified_name = parts.next().ok_or_else(|| error::PropertyNotFound {
-                entity: entity_type,
+                entity: record.entity_type(),
                 property: "requires:room_variant:<room>",
-                id: record.qualified_name.into(),
+                id: record.qualified_name().into(),
             })?;
-            let (room_name, variant) = title_and_variant_from_qualified(qualified_name)?;
+            let (room_name, variant) = record.parse_qualified_name(qualified_name)?;
             let room =
                 room_map
                     .get_room(&room_name, &variant)
@@ -118,12 +115,15 @@ fn parse_one_requirement(
 #[cfg(test)]
 mod test {
 
-    use ini::Properties;
+    use ini::Ini;
 
     use crate::{
-        config_parser::test_utils::{
-            data::{item_map, room_map},
-            i, t,
+        config_parser::{
+            iter::{EntitySection, SectionRecordIter},
+            test_utils::{
+                data::{item_map, room_map},
+                i, t,
+            },
         },
         core::Requirement,
     };
@@ -131,26 +131,33 @@ mod test {
     use super::*;
     use asserting::prelude::*;
 
+    fn make_record<'a>(ini: &'a mut Ini, props: &'a [(&'static str, &'static str)]) -> Record<'a> {
+        let mut section = ini.with_section::<&str>(Some("Item:test"));
+        for (k, v) in props {
+            section.set(k.to_string(), v.to_string());
+        }
+        let mut iter = SectionRecordIter::new(ini.iter(), EntitySection::Item);
+        let record = iter
+            .next()
+            .unwrap()
+            .unwrap()
+            .into_record(&["requires"], &[]);
+        record.unwrap()
+    }
+
     #[test]
     fn parse_has_item_requirement() {
         let items = item_map();
         let rooms = room_map(true);
 
-        let mut props = Properties::new();
-        props.insert("requires".to_string(), "has_item:key".to_string());
+        let mut ini = Ini::new();
+        let record = make_record(&mut ini, &[("requires", "has_item:key")]);
 
-        let record = Record {
-            section: "TestSection",
-            name: "test_name",
-            variant: None,
-            qualified_name: "TestSection:test_name",
-            properties: &props,
-        };
-
-        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        let result = parse_requirements(&record, &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &result[0] {
+        let r: &Requirement = &result[0];
+        match &r {
             Requirement::HasItem(item) => {
                 assert_eq!(item.name(), &i("key"));
             }
@@ -163,21 +170,14 @@ mod test {
         let items = item_map();
         let rooms = room_map(true);
 
-        let mut props = Properties::new();
-        props.insert("requires".to_string(), "does_not_have:key".to_string());
+        let mut ini = Ini::new();
+        let record = make_record(&mut ini, &[("requires", "does_not_have:key")]);
 
-        let record = Record {
-            section: "TestSection",
-            name: "test_name",
-            variant: None,
-            qualified_name: "TestSection:test_name",
-            properties: &props,
-        };
-
-        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        let result = parse_requirements(&record, &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &result[0] {
+        let r: &Requirement = &result[0];
+        match &r {
             Requirement::DoesNotHave(item) => {
                 assert_eq!(item.name(), &i("key"));
             }
@@ -190,24 +190,14 @@ mod test {
         let items = item_map();
         let rooms = room_map(true);
 
-        let mut props = Properties::new();
-        props.insert(
-            "requires".to_string(),
-            "room_variant:WoodShed|closed".to_string(),
-        );
+        let mut ini = Ini::new();
+        let record = make_record(&mut ini, &[("requires", "room_variant:WoodShed|closed")]);
 
-        let record = Record {
-            section: "TestSection",
-            name: "test_name",
-            variant: None,
-            qualified_name: "TestSection:test_name",
-            properties: &props,
-        };
-
-        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        let result = parse_requirements(&record, &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &result[0] {
+        let r: &Requirement = &result[0];
+        match &r {
             Requirement::RoomVariant(room) => {
                 assert_eq!(room.name(), &t("WoodShed"));
                 assert_eq!(room.variant(), &Some(i("closed")));
@@ -221,21 +211,14 @@ mod test {
         let items = item_map();
         let rooms = room_map(true);
 
-        let mut props = Properties::new();
-        props.insert("requires".to_string(), "room_variant:WoodShed".to_string());
+        let mut ini = Ini::new();
+        let record = make_record(&mut ini, &[("requires", "room_variant:WoodShed")]);
 
-        let record = Record {
-            section: "TestSection",
-            name: "test_name",
-            variant: None,
-            qualified_name: "TestSection:test_name",
-            properties: &props,
-        };
-
-        let result = parse_requirements(&record, "Test", &items, &rooms).unwrap();
+        let result = parse_requirements(&record, &items, &rooms).unwrap();
         assert_that!(&result).has_length(1);
 
-        match &result[0] {
+        let r: &Requirement = &result[0];
+        match &r {
             Requirement::RoomVariant(room) => {
                 assert_eq!(room.name(), &t("WoodShed"));
                 assert_eq!(room.variant(), &None);
@@ -249,18 +232,10 @@ mod test {
         let items = item_map();
         let rooms = room_map(true);
 
-        let mut props = Properties::new();
-        props.insert("requires".to_string(), "nonsense:value".to_string());
+        let mut ini = Ini::new();
+        let record = make_record(&mut ini, &[("requires", "nonesense")]);
 
-        let record = Record {
-            section: "TestSection",
-            name: "test_name",
-            variant: None,
-            qualified_name: "TestSection:test_name",
-            properties: &props,
-        };
-
-        let err = parse_requirements(&record, "Test", &items, &rooms).unwrap_err();
+        let err = parse_requirements(&record, &items, &rooms).unwrap_err();
         assert_that!(err.to_string()).contains("requirement");
     }
 }

@@ -2,51 +2,8 @@ use convert_case::{Case, Casing};
 use derive_more::{AsRef, Debug, Display};
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
-use strum::IntoStaticStr;
-use thiserror::Error;
 
-#[derive(Error, Debug, Display)]
-#[display("Cannot convert `{value}` to type {dtype}")]
-pub struct IllegalConversion {
-    value: String,
-    dtype: &'static str,
-}
-
-#[derive(IntoStaticStr, Display, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EntityName {
-    Identifier(Identifier),
-    Title(Title),
-}
-
-impl TryInto<Identifier> for EntityName {
-    type Error = IllegalConversion;
-
-    fn try_into(self) -> Result<Identifier, Self::Error> {
-        if let Self::Identifier(i) = &self {
-            Ok(i.clone())
-        } else {
-            Err(IllegalConversion {
-                value: self.to_string(),
-                dtype: "Identifier(id)",
-            })
-        }
-    }
-}
-
-impl TryInto<Title> for EntityName {
-    type Error = IllegalConversion;
-
-    fn try_into(self) -> Result<Title, Self::Error> {
-        if let Self::Title(i) = &self {
-            Ok(i.clone())
-        } else {
-            Err(IllegalConversion {
-                value: self.to_string(),
-                dtype: "Title(id)",
-            })
-        }
-    }
-}
+use super::IllegalConversion;
 
 #[allow(clippy::expect_used)]
 static IDENTIFIER_RX: LazyLock<Regex> =
@@ -59,9 +16,6 @@ static TITLE_RX: LazyLock<Regex> =
 pub struct Identifier(String);
 
 impl Identifier {
-    pub fn parse(s: &str) -> Result<Self, IllegalConversion> {
-        s.parse()
-    }
     pub const fn as_str(&self) -> &str {
         self.0.as_str()
     }
@@ -86,9 +40,6 @@ impl FromStr for Identifier {
 pub struct Title(String);
 
 impl Title {
-    pub fn parse(s: &str) -> Result<Self, IllegalConversion> {
-        s.parse()
-    }
     pub const fn as_str(&self) -> &str {
         self.0.as_str()
     }

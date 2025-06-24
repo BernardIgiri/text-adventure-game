@@ -5,27 +5,17 @@ use ini::SectionIter;
 use crate::{core::Character, error};
 
 use super::{
-    iter::{EntitySection, RecordProperty, SectionRecordIter},
+    iter::{EntitySection, SectionRecordIter},
     types::CharacterMap,
 };
 
 pub fn parse_characters(ini_iter: SectionIter) -> Result<CharacterMap, error::Application> {
     let mut map = CharacterMap::new();
-    for record in SectionRecordIter::new(ini_iter, EntitySection::Character.into()) {
-        let record = record?;
-        record
-            .properties
-            .expect_keys(&["start_dialogue"], &[], &record)?;
-        let start_dialogue = record.properties.require("start_dialogue", &record)?;
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Character) {
+        let record = record?.into_record(&["start_dialogue"], &[])?;
+        let start_dialogue = record.require("start_dialogue")?;
         let character = Rc::new(Character::new(
-            record
-                .name
-                .parse()
-                .map_err(|source| error::ConversionFailed {
-                    etype: "Character",
-                    property: "name",
-                    source,
-                })?,
+            record.parse_name()?,
             start_dialogue
                 .parse()
                 .map_err(|source| error::ConversionFailed {

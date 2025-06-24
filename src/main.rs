@@ -46,7 +46,7 @@ fn play() -> Result<(), error::Application> {
         .map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
     let mut state = GameState::from_ini(ini)?;
     let mut player = Player::Idle;
-    let mut ui = UI::new();
+    let mut ui = UI::new(state.theme(), state.language());
     info!("Staring game");
     ui.greet(state.title(), state.greeting());
     while player != P::GameOver {

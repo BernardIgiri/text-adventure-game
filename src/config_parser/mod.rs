@@ -24,7 +24,7 @@ use iter::EntitySection;
 use response::parse_responses;
 use room::parse_rooms;
 use strum::IntoEnumIterator;
-use title::parse_title;
+use title::{parse_language, parse_theme, parse_title};
 
 use crate::{core::World, error};
 
@@ -33,20 +33,24 @@ pub use preprocessor::*;
 pub fn parse(ini: Ini) -> Result<World, error::Application> {
     validate_section_types(&ini)?;
     let title = parse_title(&ini)?;
+    let theme = parse_theme(ini.iter())?;
+    let language = parse_language(ini.iter())?;
     let characters = parse_characters(ini.iter())?;
     let items = parse_items(ini.iter())?;
     let rooms = parse_rooms(ini.iter(), &characters)?;
     let actions = parse_actions(ini.iter(), &rooms, &items)?;
     let responses = parse_responses(ini.iter(), &actions, &items, &rooms)?;
     let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms)?;
-    World::try_new(
-        title,
-        actions,
-        rooms,
-        dialogues,
-        characters.values().cloned().collect(),
-        responses.values().cloned().collect(),
-    )
+    World::try_new()
+        .title(title)
+        .theme(theme)
+        .language(language)
+        .actions(actions)
+        .rooms(rooms)
+        .dialogues(dialogues)
+        .characters(characters.values().cloned().collect())
+        .responses(responses.values().cloned().collect())
+        .call()
 }
 
 fn validate_section_types(ini: &Ini) -> Result<(), error::Application> {

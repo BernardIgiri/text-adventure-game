@@ -1,25 +1,32 @@
 use std::rc::Rc;
 
+use bon::bon;
 use derive_getters::Getters;
 
 use crate::error;
 
 use super::{
     entity::{CharacterRefs, ResponseRefs, RoomRefs, SequenceRefs},
-    Action, ActionMap, Character, DialogueMap, GameTitle, Response, RoomMap,
+    Action, ActionMap, Character, DialogueMap, GameTitle, Language, Response, RoomMap, Theme,
 };
 
 #[derive(Debug, Getters)]
 pub struct World {
     title: GameTitle,
+    theme: Rc<Theme>,
+    language: Rc<Language>,
     actions: ActionMap,
     rooms: RoomMap,
     dialogues: DialogueMap,
 }
 
+#[bon]
 impl World {
+    #[builder]
     pub fn try_new(
         title: GameTitle,
+        theme: Theme,
+        language: Language,
         actions: ActionMap,
         rooms: RoomMap,
         dialogues: DialogueMap,
@@ -123,6 +130,8 @@ impl World {
         }
         Ok(Self {
             title,
+            theme: Rc::new(theme),
+            language: Rc::new(language),
             actions,
             rooms,
             dialogues,
@@ -174,14 +183,16 @@ mod test {
         }
 
         pub fn world_from_data(self) -> Result<World, error::Application> {
-            World::try_new(
-                self.title,
-                self.actions,
-                self.rooms,
-                self.dialogues,
-                self.characters.values().cloned().collect::<Vec<_>>(),
-                self.responses.values().cloned().collect::<Vec<_>>(),
-            )
+            World::try_new()
+                .title(self.title)
+                .theme(Theme::default())
+                .language(Language::default())
+                .actions(self.actions)
+                .rooms(self.rooms)
+                .dialogues(self.dialogues)
+                .characters(self.characters.values().cloned().collect())
+                .responses(self.responses.values().cloned().collect())
+                .call()
         }
     }
 

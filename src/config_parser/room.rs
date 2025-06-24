@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, ListProperty, RecordProperty, SectionRecordIter},
+    iter::{EntitySection, SectionRecordIter},
     types::{CharacterMap, RoomMap},
 };
 
@@ -17,16 +17,10 @@ pub fn parse_rooms<'a>(
     character_map: &CharacterMap,
 ) -> Result<RoomMap, error::Application> {
     let mut map = RoomMap::new();
-    for record in SectionRecordIter::new(ini_iter, EntitySection::Room.into()) {
-        let record = record?;
-        record.properties.expect_keys(
-            &["description"],
-            &["characters", "exits", "actions"],
-            &record,
-        )?;
-        let description = record.properties.require("description", &record)?;
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Room) {
+        let record = record?.into_record(&["description"], &["characters", "exits", "actions"])?;
+        let description = record.require("description")?;
         let exits = record
-            .properties
             .get_list("exits")
             .map(|exit| {
                 let mut parts = exit.split(":");
@@ -35,7 +29,7 @@ pub fn parse_rooms<'a>(
                     .ok_or_else(|| error::PropertyNotFound {
                         entity: "Room",
                         property: "exit:<direction>",
-                        id: record.qualified_name.into(),
+                        id: record.qualified_name().into(),
                     })?
                     .trim()
                     .parse::<Identifier>()
@@ -49,7 +43,7 @@ pub fn parse_rooms<'a>(
                     .ok_or_else(|| error::PropertyNotFound {
                         entity: "Room",
                         property: "exit=direction:<room>",
-                        id: record.qualified_name.into(),
+                        id: record.qualified_name().into(),
                     })?
                     .trim()
                     .parse::<Title>()
@@ -62,7 +56,6 @@ pub fn parse_rooms<'a>(
             })
             .collect::<Result<HashMap<Identifier, Title>, error::Application>>()?;
         let characters = record
-            .properties
             .get_list("characters")
             .map(|character_name| {
                 Ok(character_map
@@ -83,7 +76,6 @@ pub fn parse_rooms<'a>(
             })
             .collect::<Result<Vec<Rc<Character>>, error::Application>>()?;
         let actions = record
-            .properties
             .get_list("actions")
             .map(|s| s.parse::<Identifier>())
             .collect::<Result<Vec<Identifier>, _>>()
@@ -92,25 +84,20 @@ pub fn parse_rooms<'a>(
                 property: "actions",
                 source,
             })?;
-        let name = record
-            .name
-            .parse::<Title>()
-            .map_err(|source| error::ConversionFailed {
-                etype: "Room",
-                property: "name",
-                source,
-            })?;
+        let name = record.parse_name::<Title>()?;
         let room = Rc::new(
             Room::builder()
                 .name(name.clone())
-                .maybe_variant(record.variant.clone())
+                .maybe_variant(record.variant().clone())
                 .description(description.to_owned())
                 .exits(exits)
                 .actions(actions)
                 .characters(characters)
                 .build(),
         );
-        map.entry(name).or_default().insert(record.variant, room);
+        map.entry(name)
+            .or_default()
+            .insert(record.variant().clone(), room);
     }
     Ok(map)
 }

@@ -1,12 +1,16 @@
+use std::rc::Rc;
+
 use convert_case::Casing;
 use cursive::{
     align::HAlign,
-    theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme},
+    theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme as SivTheme},
     utils::markup::StyledString,
     view::{IntoBoxedView, Nameable, Resizable},
     views::{self, Button, DummyView, LayerPosition, LinearLayout, SelectView, TextView},
     Cursive, CursiveExt,
 };
+
+use crate::core::{Language, Theme, ThemeColor};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RoomChoice {
@@ -66,41 +70,29 @@ struct UIState {
     choice: UIChoice,
 }
 
-pub struct UITheme {
-    title: Color,
-    heading: Color,
-    background: Color,
-    text: Color,
-    highlight: Color,
-    highlight_text: Color,
-    subdued: Color,
-}
-
 pub struct UI {
     siv: Cursive,
-    theme: UITheme,
+    theme: Rc<Theme>,
+    language: Rc<Language>,
     screen: MenuScreen,
 }
 
+impl From<&ThemeColor> for Color {
+    fn from(color: &ThemeColor) -> Self {
+        Self::Rgb(*color.r(), *color.g(), *color.b())
+    }
+}
+
 impl UI {
-    pub fn new() -> Self {
+    pub fn new(theme: Rc<Theme>, language: Rc<Language>) -> Self {
         let mut siv = Cursive::default();
-        let mut siv_theme = Theme::default();
-        let theme = UITheme {
-            title: Color::Rgb(200, 150, 150),
-            heading: Color::Rgb(110, 110, 255),
-            background: Color::Rgb(0, 0, 0),
-            text: Color::Rgb(240, 240, 240),
-            highlight: Color::Rgb(40, 40, 40),
-            highlight_text: Color::Rgb(255, 255, 80),
-            subdued: Color::Rgb(127, 127, 127),
-        };
-        siv_theme.palette[PaletteColor::Background] = theme.background;
-        siv_theme.palette[PaletteColor::View] = theme.background;
-        siv_theme.palette[PaletteColor::Primary] = theme.text;
-        siv_theme.palette[PaletteColor::TitlePrimary] = theme.title;
-        siv_theme.palette[PaletteColor::Highlight] = theme.highlight;
-        siv_theme.palette[PaletteColor::HighlightText] = theme.highlight_text;
+        let mut siv_theme = SivTheme::default();
+        siv_theme.palette[PaletteColor::Background] = theme.background().into();
+        siv_theme.palette[PaletteColor::View] = theme.background().into();
+        siv_theme.palette[PaletteColor::Primary] = theme.text().into();
+        siv_theme.palette[PaletteColor::TitlePrimary] = theme.title().into();
+        siv_theme.palette[PaletteColor::Highlight] = theme.highlight().into();
+        siv_theme.palette[PaletteColor::HighlightText] = theme.highlight_text().into();
         siv_theme.borders = BorderStyle::None;
         siv.set_theme(siv_theme);
         siv.add_global_callback('q', |s| s.quit());
@@ -110,19 +102,23 @@ impl UI {
         Self {
             siv,
             theme,
+            language,
             screen: MenuScreen::default(),
         }
     }
     pub fn greet(&mut self, title: &str, greeting: &str) {
         let mut title_str = StyledString::new();
-        title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
+        title_str.append_styled(
+            title,
+            Style::from(Color::from(self.theme.title())).combine(Effect::Bold),
+        );
         let title_view = TextView::new(title_str).h_align(HAlign::Center);
 
         let mut greeting_str = StyledString::new();
         greeting_str.append_plain(greeting);
         let greeting_view = TextView::new(greeting_str).h_align(HAlign::Center);
 
-        let pause = Self::pause_for_any_key_view();
+        let pause = self.pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
             .child(DummyView.full_height())
@@ -141,14 +137,17 @@ impl UI {
     }
     pub fn roll_credits(&mut self, title: &str, credits: &str) {
         let mut title_str = StyledString::new();
-        title_str.append_styled(title, Style::from(self.theme.title).combine(Effect::Bold));
+        title_str.append_styled(
+            title,
+            Style::from(Color::from(self.theme.title())).combine(Effect::Bold),
+        );
         let title_view = TextView::new(title_str).h_align(HAlign::Center);
 
         let mut credits_str = StyledString::new();
         credits_str.append_plain(credits);
         let credits_view = TextView::new(credits_str).h_align(HAlign::Center);
 
-        let pause = Self::pause_for_any_key_view();
+        let pause = self.pause_for_any_key_view();
 
         let layout = LinearLayout::vertical()
             .child(DummyView.full_height())
@@ -177,19 +176,24 @@ impl UI {
         body.push_str(room_description);
         body.push_str("\n\n");
         if !characters.is_empty() {
-            body.push_str("There are people here: ");
+            body.push_str(self.language.characters_found());
+            body.push(' ');
             body.push_str(&characters.join(", "));
             body.push('\n');
-            menu.push(MenuItem("Talk".into(), UIChoice::InRoom(RoomChoice::Chat)));
+            menu.push(MenuItem(
+                self.language.talk().into(),
+                UIChoice::InRoom(RoomChoice::Chat),
+            ));
         }
         if has_actions {
             menu.push(MenuItem(
-                "Interact".into(),
+                self.language.interact().into(),
                 UIChoice::InRoom(RoomChoice::Interact),
             ));
         }
         if !exits.is_empty() {
-            body.push_str("Your exits are: ");
+            body.push_str(self.language.exits_found());
+            body.push(' ');
             body.push_str(
                 &exits
                     .iter()
@@ -199,18 +203,18 @@ impl UI {
             );
             body.push('\n');
             menu.push(MenuItem(
-                "Go somewhere else".into(),
+                self.language.go_somewhere().into(),
                 UIChoice::InRoom(RoomChoice::Leave),
             ));
         } else {
             menu.push(MenuItem(
-                "End game".into(),
+                self.language.end_game().into(),
                 UIChoice::InRoom(RoomChoice::GameOver),
             ));
         }
         self.show_menu(MenuScreen {
             title: room_name.into(),
-            prompt: "What would you like to do?".into(),
+            prompt: self.language.choose_action().into(),
             body,
             menu,
         });
@@ -236,12 +240,12 @@ impl UI {
             .map(|(i, c)| MenuItem(c.into(), UIChoice::StartChat(StartChatChoice::TalkTo(i))))
             .collect::<Vec<_>>();
         menu.push(MenuItem(
-            "No one".into(),
+            self.language.cancel_chat().into(),
             UIChoice::StartChat(StartChatChoice::NoOne),
         ));
         self.show_menu(MenuScreen {
             title: room_name.into(),
-            prompt: "Who will you talk to?".into(),
+            prompt: self.language.choose_chat().into(),
             body: room_description.into(),
             menu,
         });
@@ -268,13 +272,13 @@ impl UI {
             .collect::<Vec<_>>();
         if responses.is_empty() {
             menu.push(MenuItem(
-                "Nothing".into(),
+                self.language.cancel_response().into(),
                 UIChoice::InChat(ChatChoice::Leave),
             ));
         }
         self.show_menu(MenuScreen {
             title: character_name.into(),
-            prompt: "How will you respond?".into(),
+            prompt: self.language.choose_response().into(),
             body: dialogue.into(),
             menu,
         });
@@ -305,12 +309,12 @@ impl UI {
             })
             .collect::<Vec<_>>();
         menu.push(MenuItem(
-            "Nothing".into(),
+            self.language.cancel_action().into(),
             UIChoice::Interact(InteractionChoice::Nothing),
         ));
         self.show_menu(MenuScreen {
             title: room_name.into(),
-            prompt: "What will you do?".into(),
+            prompt: self.language.choose_action().into(),
             body: room_description.into(),
             menu,
         });
@@ -335,7 +339,10 @@ impl UI {
             title: action_name.to_string().to_case(convert_case::Case::Title),
             prompt: "".into(),
             body: description.into(),
-            menu: vec![MenuItem("Continue...".into(), UIChoice::None)],
+            menu: vec![MenuItem(
+                self.language.continue_game().into(),
+                UIChoice::None,
+            )],
         });
     }
 
@@ -355,10 +362,13 @@ impl UI {
                 )
             })
             .collect::<Vec<_>>();
-        menu.push(MenuItem("Stay".into(), UIChoice::Leave(LeaveChoice::Stay)));
+        menu.push(MenuItem(
+            self.language.cancel_exit().into(),
+            UIChoice::Leave(LeaveChoice::Stay),
+        ));
         self.show_menu(MenuScreen {
             title: room_name.into(),
-            prompt: "Which way will you go?".into(),
+            prompt: self.language.choose_exit().into(),
             body: room_description.into(),
             menu,
         });
@@ -389,7 +399,7 @@ impl UI {
                 let mut styled = StyledString::new();
                 styled.append_styled(
                     screen.title.as_str(),
-                    Style::from(self.theme.heading).combine(Effect::Bold),
+                    Style::from(Color::from(self.theme.heading())).combine(Effect::Bold),
                 );
                 v.set_content(styled);
             });
@@ -438,8 +448,8 @@ impl UI {
         let menu = menu.with_name("menu");
         let mut notice = StyledString::new();
         notice.append_styled(
-            "Press 'q' at any time to quit!",
-            Style::from(self.theme.subdued),
+            self.language.press_q_to_quit(),
+            Style::from(Color::from(self.theme.subdued())),
         );
         let notice = TextView::new(notice).h_align(HAlign::Center);
         let layout = LinearLayout::vertical()
@@ -463,7 +473,8 @@ impl UI {
             .weight(1);
         self.swap_layer(layout);
     }
-    fn pause_for_any_key_view() -> Button {
-        Button::new_raw("[ Continue... ]", |s| s.quit())
+    fn pause_for_any_key_view(&self) -> Button {
+        let text = format!("[ {} ]", self.language.continue_game());
+        Button::new_raw(text, |s| s.quit())
     }
 }

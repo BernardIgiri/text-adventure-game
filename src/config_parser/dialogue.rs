@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    iter::{EntitySection, ListProperty, RecordProperty, SectionRecordIter},
+    iter::{EntitySection, SectionRecordIter},
     requirement::parse_requirements,
     types::{DialogueMap, ItemMap, ResponseMap, RoomMap},
 };
@@ -20,14 +20,10 @@ pub fn parse_dialogues(
     room_map: &RoomMap,
 ) -> Result<DialogueMap, error::Application> {
     let mut map = DialogueMap::new();
-    for record in SectionRecordIter::new(ini_iter, EntitySection::Dialogue.into()) {
-        let record = record?;
-        record
-            .properties
-            .expect_keys(&["text"], &["response", "requires"], &record)?;
-        let text = record.properties.require("text", &record)?;
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Dialogue) {
+        let record = record?.into_record(&["text"], &["response", "requires"])?;
+        let text = record.require("text")?;
         let responses = record
-            .properties
             .get_list("response")
             .map(|s| {
                 Ok(response_map
@@ -43,7 +39,7 @@ pub fn parse_dialogues(
                     .clone())
             })
             .collect::<Result<Vec<Rc<Response>>, error::Application>>()?;
-        let requires = parse_requirements(&record, "Dialogue", item_map, room_map)?;
+        let requires = parse_requirements(&record, item_map, room_map)?;
         let dialogue = Rc::new(
             Dialogue::builder()
                 .text(text.into())
@@ -51,18 +47,9 @@ pub fn parse_dialogues(
                 .requires(requires)
                 .build(),
         );
-        map.entry(
-            record
-                .name
-                .parse()
-                .map_err(|source| error::ConversionFailed {
-                    etype: "Dialogue",
-                    property: "name",
-                    source,
-                })?,
-        )
-        .or_default()
-        .insert(record.variant.clone(), dialogue);
+        map.entry(record.parse_name()?)
+            .or_default()
+            .insert(record.variant().clone(), dialogue);
     }
     Ok(map)
 }

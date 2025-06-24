@@ -4,7 +4,7 @@ use ini::SectionIter;
 
 use crate::{
     config_parser::{
-        iter::{EntitySection, RecordProperty, SectionRecordIter},
+        iter::{EntitySection, SectionRecordIter},
         requirement::parse_requirements,
     },
     core::{Identifier, Response},
@@ -20,21 +20,11 @@ pub fn parse_responses<'a>(
     room_map: &RoomMap,
 ) -> Result<ResponseMap, error::Application> {
     let mut map = ResponseMap::new();
-    for record in SectionRecordIter::new(ini_iter, EntitySection::Response.into()) {
-        let record = record?;
-        record
-            .properties
-            .expect_keys(&["text"], &["leads_to", "triggers", "requires"], &record)?;
-        let text = record.properties.require("text", &record)?;
-        let leads_to = match record.properties.get("leads_to") {
-            Some(s) => Some(s.parse().map_err(|source| error::ConversionFailed {
-                etype: "Response",
-                property: "leads_to",
-                source,
-            })?),
-            None => None,
-        };
-        let action = match record.properties.get("triggers") {
+    for record in SectionRecordIter::new(ini_iter, EntitySection::Response) {
+        let record = record?.into_record(&["text"], &["leads_to", "triggers", "requires"])?;
+        let text = record.require("text")?;
+        let leads_to = record.get_parsed("leads_to")?;
+        let action = match record.get("triggers") {
             Some(action_name) => Some(
                 action_map
                     .get(&action_name.parse::<Identifier>().map_err(|source| {
@@ -52,7 +42,7 @@ pub fn parse_responses<'a>(
             ),
             None => None,
         };
-        let requires = parse_requirements(&record, "Response", item_map, room_map)?;
+        let requires = parse_requirements(&record, item_map, room_map)?;
         let response = Rc::new(
             Response::builder()
                 .text(text.into())
@@ -61,17 +51,7 @@ pub fn parse_responses<'a>(
                 .requires(requires)
                 .build(),
         );
-        map.insert(
-            record
-                .name
-                .parse()
-                .map_err(|source| error::ConversionFailed {
-                    etype: "Response",
-                    property: "name",
-                    source,
-                })?,
-            response,
-        );
+        map.insert(record.parse_name()?, response);
     }
     Ok(map)
 }

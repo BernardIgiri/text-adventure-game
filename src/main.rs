@@ -12,7 +12,7 @@ use config_parser::preprocess_to_ini_from_file;
 use core::GameState;
 use player::Player;
 use std::{fs::File, path::PathBuf};
-use tracing::info;
+use tracing::{self, info};
 use tracing_subscriber::{fmt::writer::BoxMakeWriter, EnvFilter};
 use ui::*;
 
@@ -32,6 +32,7 @@ fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
     if let Err(e) = play() {
+        tracing::error!("Error: {:#?}", e);
         eprintln!("Error: {}", e);
     }
 }
@@ -41,13 +42,13 @@ fn main() {
 fn play() -> Result<(), error::Application> {
     use Player as P;
     let args = Args::parse();
-    info!("Loading data");
+    info!("Loading data...");
     let ini = preprocess_to_ini_from_file(args.file.as_path())
         .map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
     let mut state = GameState::from_ini(ini)?;
     let mut player = Player::Idle;
     let mut ui = UI::new(state.theme(), state.language());
-    info!("Staring game");
+    info!("Staring game...");
     ui.greet(state.title(), state.greeting());
     while player != P::GameOver {
         info!("State {:#?}", player.clone());
@@ -193,7 +194,9 @@ fn play() -> Result<(), error::Application> {
         }
     }
     if state.current_room().is_trap() {
+        info!("Rolling credits...");
         ui.roll_credits(state.title(), state.credits());
     }
+    info!("Finished.");
     Ok(())
 }

@@ -1,12 +1,10 @@
-// !!! In absense of Dialogue there needs to be a generic "..." dialogue
-// [x] A room with no exits ends the game
-// Action descriptions must be displayed somewhere right?
-// Leave should only be an option is there are no dialogue responses
+# Text Adventure Game
 
-// Save game option?
-// Add ability to look at inventory
-// Remove items from rooms, they serve no purpose
-// add teleport_to action
-// actions need a leads_to:dialogue:x and leads_to:action:y
-// let ini file configure all game text
-// Requirements don't need to be reference counted
+Welcome to **Text Adventure Game,** a game engine for making TUI text adventure games in the quaint magic of 90's era ini files!
+
+Ini files were selected in hopes of keeping the sytnax symple and kid accessible. That's right, kids can make a game in minutes with this engine! You can describe rooms, characters, items, chat dialogues, responses, and actions. You can customize the theme and even swap out of all of the game text to support non-English languages. If you want text to span multiple lines you can do so with a simple triple quote `"""` at the begining and end of your text. That is the one enhancement to ini files provided here.
+
+## Instructions
+
+To create a game you'll first need to install `text-adventure-game`. Then you will need to create an `.ini` file describing your game. Then to run your game you need to run 
+

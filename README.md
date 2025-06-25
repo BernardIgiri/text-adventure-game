@@ -14,11 +14,13 @@ text-adventure-game -f path/to/your/game.ini
 
 ## Download
 
-| Platform       | Download                                                     |
-| -------------- | ------------------------------------------------------------ |
-| 🐧 Linux (musl) | [Download](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/text-adventure-game-x86_64-unknown-linux-musl.tar.gz) |
-| 🪟 Windows      | [Download](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/text-adventure-game-x86_64-pc-windows-msvc.zip) |
-| 🍎 macOS        | [Download](https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/text-adventure-game-x86_64-apple-darwin.tar.gz) |
+| Platform | Link |
+|----------|------|
+| 🐧 Linux (musl) | [Download](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-unknown-linux-musl.tar.gz) |
+| 🪟 Windows | [Download](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-pc-windows-msvc.zip) |
+| 🍎 macOS | [Download](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-apple-darwin.tar.gz) |
+
+For a demo, try the [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini)
 
 ## **INI File Structure**
 

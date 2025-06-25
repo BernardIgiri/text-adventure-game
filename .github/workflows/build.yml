@@ -53,6 +53,7 @@ jobs:
         fi
 
     - name: Package binary
+      shell: bash
       run: |
         mkdir dist
         cp target/${{ matrix.target }}/release/text-adventure-game* dist/

@@ -43,6 +43,7 @@ jobs:
       run: cargo build --release --target=${{ matrix.target }}
 
     - name: Verify Git tag matches Cargo.toml
+      shell: bash
       run: |
         TAG_VERSION=${GITHUB_REF_NAME#v}
         CARGO_VERSION=$(grep '^version =' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')

@@ -61,7 +61,7 @@ jobs:
         if [[ "${{ matrix.ext }}" == "tar.gz" ]]; then
           tar -czvf ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }} *
         else
-          powershell Compress-Archive -Path * -DestinationPath ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }}
+          zip ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }} *
         fi
 
     - name: Upload release asset

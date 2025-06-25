@@ -31,12 +31,15 @@ pub enum Application {
     MultipleMissingEntities(Vec<MissingEntityGroup>),
     #[error("Cannot find default `{etype}`  entity for id `{id}`")]
     DefaultEntityNotFound { etype: &'static str, id: String },
-    #[error(
-        "Expected properties `{expected_props}` but found `{found_props}` for entity `{entity}` with id `{id}`!"
-    )]
-    PropertyNamesDontMatch {
-        expected_props: String,
-        found_props: String,
+    #[error("Missing properties {missing:?} for entity `{entity}` with id `{id}`!")]
+    MissingProperties {
+        missing: Vec<String>,
+        entity: &'static str,
+        id: String,
+    },
+    #[error("Found unexpected properties {unexpected:?} in entity `{entity}` with id `{id}`!")]
+    UnexpectedProperties {
+        unexpected: Vec<String>,
         entity: &'static str,
         id: String,
     },

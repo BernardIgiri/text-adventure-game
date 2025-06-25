@@ -106,37 +106,38 @@ impl<'a> UnverifiedRecord<'a> {
         let required_keys: HashSet<&str> = required_props.iter().copied().collect();
         let optional_keys: HashSet<&str> = optional_props.iter().copied().collect();
         let allowed_keys: HashSet<&str> = required_keys.union(&optional_keys).copied().collect();
+        let mut missing_keys = required_keys.difference(&found_keys).peekable();
+        let mut unexpected_keys = found_keys.difference(&allowed_keys).peekable();
 
-        if required_keys.difference(&found_keys).next().is_none()
-            && found_keys.difference(&allowed_keys).next().is_none()
-        {
-            Ok(Record(self))
-        } else {
-            let mut expected_props: Vec<&str> = allowed_keys.into_iter().collect();
-            expected_props.sort_unstable();
-            let expected_props = expected_props
-                .iter()
-                .map(|p| {
-                    if optional_keys.contains(p) {
-                        format!("{p}*")
-                    } else {
-                        p.to_string()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut found_props: Vec<&str> = found_keys.into_iter().collect();
-            found_props.sort_unstable();
-
-            Err(error::PropertyNamesDontMatch {
+        match (
+            missing_keys.peek().is_some(),
+            unexpected_keys.peek().is_some(),
+        ) {
+            (false, false) => Ok(Record(self)),
+            (true, _) => {
                 #[allow(clippy::expect_used)]
-                entity: EntitySection::from_str(self.section)
+                let entity = EntitySection::from_str(self.section)
                     .expect("Valid record sections should already be established by now!")
-                    .into(),
-                id: self.qualified_name.into(),
-                expected_props,
-                found_props: found_props.join(", "),
-            })
+                    .into();
+                let id = self.qualified_name.into();
+                Err(error::MissingProperties {
+                    missing: missing_keys.map(|s| s.to_string()).collect(),
+                    entity,
+                    id,
+                })
+            }
+            (_, true) => {
+                #[allow(clippy::expect_used)]
+                let entity = EntitySection::from_str(self.section)
+                    .expect("Valid record sections should already be established by now!")
+                    .into();
+                let id = self.qualified_name.into();
+                Err(error::UnexpectedProperties {
+                    unexpected: unexpected_keys.map(|s| s.to_string()).collect(),
+                    entity,
+                    id,
+                })
+            }
         }
     }
 }
@@ -376,14 +377,12 @@ mod tests {
             .into_record(&["description"], &["weight"])
             .unwrap_err();
         match err {
-            error::Application::PropertyNamesDontMatch {
-                expected_props,
-                found_props,
+            error::Application::MissingProperties {
+                missing,
                 entity,
                 id,
             } => {
-                assert_eq!(expected_props, "description, weight*");
-                assert_eq!(found_props, "weight");
+                assert_eq!(missing, vec!["description".to_string()]);
                 assert_eq!(entity, "Item");
                 assert_eq!(id, "ring");
             }
@@ -403,14 +402,12 @@ mod tests {
             .into_record(&["description"], &["weight"])
             .unwrap_err();
         match err {
-            error::Application::PropertyNamesDontMatch {
-                expected_props,
-                found_props,
+            error::Application::UnexpectedProperties {
+                unexpected,
                 entity,
                 id,
             } => {
-                assert_eq!(expected_props, "description, weight*");
-                assert_eq!(found_props, "color, description, weight");
+                assert_eq!(unexpected, vec!["color".to_string()]);
                 assert_eq!(entity, "Item");
                 assert_eq!(id, "ring");
             }

@@ -80,6 +80,8 @@ pub fn parse_language<'a>(ini_iter: SectionIter<'a>) -> Result<Language, error::
                 "exits_found",
                 "talk",
                 "interact",
+                "view_inventory",
+                "inventory",
                 "go_somewhere",
                 "end_game",
                 "choose_exit",
@@ -105,6 +107,8 @@ pub fn parse_language<'a>(ini_iter: SectionIter<'a>) -> Result<Language, error::
     let go_somewhere = record.require("go_somewhere")?.into();
     let talk = record.require("talk")?.into();
     let interact = record.require("interact")?.into();
+    let view_inventory = record.require("view_inventory")?.into();
+    let inventory = record.require("inventory")?.into();
     let choose_exit = record.require("choose_exit")?.into();
     let cancel_exit = record.require("cancel_exit")?.into();
     let choose_chat = record.require("choose_chat")?.into();
@@ -123,6 +127,8 @@ pub fn parse_language<'a>(ini_iter: SectionIter<'a>) -> Result<Language, error::
         .go_somewhere(go_somewhere)
         .talk(talk)
         .interact(interact)
+        .view_inventory(view_inventory)
+        .inventory(inventory)
         .choose_exit(choose_exit)
         .cancel_exit(cancel_exit)
         .choose_chat(choose_chat)
@@ -165,6 +171,8 @@ mod test {
         talk = Talk
         interact = Interact
         go_somewhere = Go someplace?
+        view_inventory = Look through your stuff?
+        inventory = Your Bag Of Stuff
         end_game = End the game?
         choose_exit = Get out of here?
         cancel_exit = Don't leave
@@ -212,34 +220,18 @@ mod test {
     fn missing_start_room() {
         let ini = Ini::load_from_str(BAD_DATA_NO_START).unwrap();
         let result = parse_title(&ini);
-        assert_that!(result).is_err().satisfies(|r| {
-            matches!(
-                r,
-                Err(error::PropertyNamesDontMatch {
-                    expected_props,
-                    found_props,
-                    ..
-                }) if expected_props == "credits, greeting, start_room, title" &&
-                    found_props == "credits, greeting, title"
-            )
-        });
+        assert_that!(result)
+            .is_err()
+            .satisfies(|r| matches!(r, Err(error::MissingProperties { .. })));
     }
 
     #[test]
     fn empty_data() {
         let ini = Ini::load_from_str(BAD_DATA_EMPTY).unwrap();
         let result = parse_title(&ini);
-        assert_that!(result).is_err().satisfies(|r| {
-            matches!(
-                r,
-                Err(error::PropertyNamesDontMatch {
-                    expected_props,
-                    found_props,
-                    ..
-                }) if expected_props == "credits, greeting, start_room, title" &&
-                   found_props.is_empty()
-            )
-        });
+        assert_that!(result)
+            .is_err()
+            .satisfies(|r| matches!(r, Err(error::MissingProperties { .. })));
     }
 
     #[test]

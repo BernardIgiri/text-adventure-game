@@ -6,7 +6,9 @@ use cursive::{
     theme::{BorderStyle, Color, Effect, PaletteColor, Style, Theme as SivTheme},
     utils::markup::StyledString,
     view::{IntoBoxedView, Nameable, Resizable},
-    views::{self, Button, DummyView, LayerPosition, LinearLayout, SelectView, TextView},
+    views::{
+        self, Button, DummyView, LayerPosition, LinearLayout, ScrollView, SelectView, TextView,
+    },
     Cursive, CursiveExt,
 };
 
@@ -16,6 +18,7 @@ use crate::core::{Language, Theme, ThemeColor};
 pub enum RoomChoice {
     Chat,
     Interact,
+    ViewInventory,
     Leave,
     GameOver,
 }
@@ -117,6 +120,7 @@ impl UI {
         let mut greeting_str = StyledString::new();
         greeting_str.append_plain(greeting);
         let greeting_view = TextView::new(greeting_str).h_align(HAlign::Center);
+        let greeting_view = ScrollView::new(greeting_view);
 
         let pause = self.pause_for_any_key_view();
 
@@ -129,8 +133,13 @@ impl UI {
             .child(DummyView.fixed_height(2))
             .child(pause)
             .child(DummyView.full_height())
+            .weight(1);
+        let layout = LinearLayout::horizontal()
+            .child(DummyView.full_width())
             .weight(1)
-            .full_width();
+            .child(layout)
+            .child(DummyView.full_width())
+            .weight(1);
         self.swap_layer(layout);
         self.siv.run();
         self.switch_to_menu_screen();
@@ -146,6 +155,7 @@ impl UI {
         let mut credits_str = StyledString::new();
         credits_str.append_plain(credits);
         let credits_view = TextView::new(credits_str).h_align(HAlign::Center);
+        let credits_view = ScrollView::new(credits_view);
 
         let pause = self.pause_for_any_key_view();
 
@@ -158,8 +168,13 @@ impl UI {
             .child(DummyView.fixed_height(2))
             .child(pause)
             .child(DummyView.full_height())
+            .weight(1);
+        let layout = LinearLayout::horizontal()
+            .child(DummyView.full_width())
             .weight(1)
-            .full_width();
+            .child(layout)
+            .child(DummyView.full_width())
+            .weight(1);
         self.swap_layer(layout);
         self.siv.run();
     }
@@ -170,6 +185,7 @@ impl UI {
         characters: &[String],
         exits: &[String],
         has_actions: bool,
+        has_inventory: bool,
     ) -> RoomChoice {
         let mut menu = Vec::new();
         let mut body = String::new();
@@ -206,6 +222,12 @@ impl UI {
                 self.language.go_somewhere().into(),
                 UIChoice::InRoom(RoomChoice::Leave),
             ));
+            if has_inventory {
+                menu.push(MenuItem(
+                    self.language.view_inventory().into(),
+                    UIChoice::InRoom(RoomChoice::ViewInventory),
+                ));
+            }
         } else {
             menu.push(MenuItem(
                 self.language.end_game().into(),
@@ -227,6 +249,19 @@ impl UI {
         } else {
             panic!("Expected choice in room prompt!");
         }
+    }
+    pub fn present_inventory(&mut self, items: &[String]) {
+        let menu = vec![MenuItem(
+            self.language.continue_game().into(),
+            UIChoice::None,
+        )];
+        let body = format!("- {}", items.join("\n- "));
+        self.show_menu(MenuScreen {
+            title: self.language.inventory().clone(),
+            body,
+            prompt: "".into(),
+            menu,
+        });
     }
     pub fn present_chat_targets(
         &mut self,
@@ -435,6 +470,7 @@ impl UI {
         let body = TextView::new(StyledString::new())
             .h_align(HAlign::Left)
             .with_name("body");
+        let body = ScrollView::new(body);
         let prompt = TextView::new(StyledString::new())
             .h_align(HAlign::Left)
             .with_name("prompt");

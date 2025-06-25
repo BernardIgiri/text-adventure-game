@@ -120,6 +120,15 @@ impl GameState {
             .as_ref()
             .map(|name| self.look_up_dialogue(name))
     }
+    pub fn has_inventory(&self) -> bool {
+        !self.inventory.is_empty()
+    }
+    pub fn inventory(&self) -> Vec<String> {
+        self.inventory
+            .iter()
+            .map(|i| i.description().to_string())
+            .collect()
+    }
     fn look_up_room(&self, name: &Title) -> Option<Rc<Room>> {
         let variant = self.active_room_variants.get(name).cloned();
         self.world.rooms().get(name)?.get(&variant).cloned()

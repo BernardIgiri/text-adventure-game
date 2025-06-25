@@ -71,6 +71,7 @@ fn play() -> Result<(), error::Application> {
                     &characters,
                     &exits,
                     actions,
+                    state.has_inventory(),
                 );
                 use RoomChoice as C;
                 match choice {
@@ -78,7 +79,12 @@ fn play() -> Result<(), error::Application> {
                     C::Interact => P::SelectingAction,
                     C::Leave => P::Leaving,
                     C::GameOver => P::GameOver,
+                    C::ViewInventory => P::ViewInventory,
                 }
+            }
+            P::ViewInventory => {
+                ui.present_inventory(&state.inventory());
+                P::Idle
             }
             P::StartingChat => {
                 let room = state.current_room();

@@ -171,8 +171,8 @@ mod test {
         assert_that!(dialogues)
             .is_err()
             .extracting(|e| e.err().unwrap().to_string())
-            .contains("requires")
-            .contains("response")
+            .contains("Missing")
+            .contains("farmer_greeting")
             .contains("text")
             .contains("Dialogue");
     }

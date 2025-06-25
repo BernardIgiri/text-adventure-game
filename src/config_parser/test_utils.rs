@@ -237,8 +237,8 @@ pub mod data {
     pub fn action_map(room_map: &RoomMap, item_map: &ItemMap) -> ActionMap {
         ActionMap::from([(
             i("open_chest"),
-            Rc::new(Action::GiveItem(
-                GiveItem::builder()
+            Rc::new(Action::TakeItem(
+                TakeItem::builder()
                     .name(i("open_chest"))
                     .description("You carefully open the chest with an intense curiosity!".into())
                     .items(vec![
@@ -260,8 +260,8 @@ pub mod data {
         ), (
             i("robbed"),
             Rc::new(
-                Action::TakeItem(
-                    TakeItem::builder()
+                Action::GiveItem(
+                    GiveItem::builder()
                         .name(i("robbed"))
                         .description("You wake up groggy laying in vomit. You pat youself down only to notice that your ring is missing!".into())
                         .items(vec![item_map.get(&i("ring")).unwrap().clone()])

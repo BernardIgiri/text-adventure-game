@@ -45,11 +45,11 @@ define_action!(ReplaceItem {
 });
 
 define_action!(GiveItem {
+    required: Option<Rc<Item>>,
     items: Vec<Rc<Item>>,
 });
 
 define_action!(TakeItem {
-    required: Option<Rc<Item>>,
     items: Vec<Rc<Item>>,
 });
 

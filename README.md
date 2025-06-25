@@ -1,18 +1,30 @@
-# **Text Adventure Game**
+# Text Adventure Game
 
-Welcome to **Text Adventure Game,** a game engine for making TUI text adventure games, using the quaint magic of 90's era ini files!
+Welcome to **Text Adventure Game,** a friendly game engine for making interactive text stories, while learning the basics of programming along the way!
 
-Ini files were selected in hopes of keeping the syntax simple and kid-accessible. That's right, kids can make a game in minutes with this engine! You can describe rooms, characters, items, chat dialogues, responses, and actions. You can customize the theme and even swap out all of the game text to support non-English languages. If you want text to span multiple lines, you can do so with a simple triple quote `"""` at the beginning and end of your text. That is the one enhancement to ini files provided here.
+With a  plain text file, you can create your own dynamic story driven adventure. Define rooms that change with events, characters to talk to, and conversations that evolve with the story. You can even customize the theme with your own colors, or change the default game text to match your language or style of speech. After you define your game in an `.ini` file, you can run the engine with it, and bring your text adventure game to life!
 
-## **Instructions**
+## 🧭 Instructions
 
-To create a game, first install `text-adventure-game`, then create an `.ini` file describing your game world. Run your game using:
+To run the game, first install or download `text-adventure-game`, then create an `.ini` file describing your game world, or use the example file below.
+
+### ▶️ Run The Game
+
+On **Linux or macOS**, open a terminal and run:
 
 ```sh
 text-adventure-game -f path/to/your/game.ini
 ```
 
-## Download
+On **Windows**, open **Command Prompt** from the Start menu and run:
+
+```powershell
+text-adventure-game.exe -f path\to\your\game.ini
+```
+
+### 📦 Download
+
+Just download and unzip the file for your OS below.
 
 | Platform | Link |
 |----------|------|
@@ -20,13 +32,29 @@ text-adventure-game -f path/to/your/game.ini
 | 🪟 Windows | [Download](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-pc-windows-msvc.zip) |
 | 🍎 macOS | [Download](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-apple-darwin.tar.gz) |
 
-For a demo, try the [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini)
+> 🛠️ After downloading, extract the archive. Then double-click the executable or run it from the terminal as shown above.
 
-## **INI File Structure**
+### 🧪 Try the Demo
 
-Your game is defined in a single `.ini` file. Each section defines a different part of the game world: the title screen, theme, language, rooms, characters, dialogues, items, and more.
+Try this [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini) demo game. Right-click the link and choose **“Save Link As…”** to save it.
 
-### **Root Section: Game Title**
+
+## INI File Structure
+
+Every game is defined in a single `.ini` file, a simple, old-school format that's easy to read and edit. This file is divided into sections that describe a part of your game world: the title screen, theme, rooms, characters, and more. You can add comments with semicolons  `;`  to provide context within your file.
+
+### Multi-line Strings
+
+As an enhancement to the `.ini` file format, Text Adventure Game adds support for multi-line strings. Simply wrap your text block in triple quotes `"""` and you can you extend it as far as you like. For example:
+
+```ini
+description="""
+    A cold wind blows.
+    You see your breath.
+"""
+```
+
+### Root Section: Game Title
 
 The root (unnamed) section must define the following fields:
 
@@ -42,7 +70,7 @@ start_room=StartingRoom
 - `credits`: Displayed when the game ends.
 - `start_room`: The `Title` id of the room the player begins in.
 
-### **[Theme] (Optional)**
+### [Theme] (Optional)
 
 ```ini
 [Theme]
@@ -57,7 +85,7 @@ subdued = Gray
 
 Defines colors for the UI. Most valid CSS colors should work, including RGB, hex codes, and common color name strings.
 
-### **[Language] (Optional)**
+### [Language] (Optional)
 
 Allows you to override built-in strings (e.g., “Talk”, “Do”, “Go”) for localization or stylistic changes.
 
@@ -84,7 +112,7 @@ press_q_to_quit = The letter q is for quit!
 
 ------
 
-## **Game Entities**
+## Game Entities
 
 Each entity section starts with one of the following headers:
 
@@ -97,7 +125,7 @@ Each entity section starts with one of the following headers:
 - `[Item:item_id]`
 - `[Action:action_id]`
 
-### **Naming Conventions**
+### Naming Conventions
 
 | Type         | Syntax     | Example        |
 | ------------ | ---------- | -------------- |
@@ -111,7 +139,7 @@ The engine will prettify names when shown to players:
 
 Only rooms and character names use `Title` syntax. Everything else is an `Identifier`.
 
-### **Entity Variants**
+### Entity Variants
 
 Some entities can have variants to reflect dynamic changes (e.g., after an event):
 
@@ -124,7 +152,7 @@ The default variant is the one with no `|variant` suffix. All entities that have
 
 ------
 
-## **Room**
+### Room
 
 Each room must define:
 
@@ -143,7 +171,7 @@ actions=open_crate
 
 **If a room has no exits, the game ends when the player enters it!**
 
-## **Character**
+### Character
 
 ```ini
 [Character:NeighborFrank]
@@ -154,7 +182,7 @@ start_dialogue=hello
 
 ------
 
-## **Dialogue**
+### Dialogue
 
 ```ini
 [Dialogue:hello]
@@ -174,7 +202,7 @@ responses=shrug
 requires=has_item:the_ring
 ```
 
-### **Requirements**
+### Requirements
 
 Use the optional `requires` attribute to conditionally show dialogue variants. Supported conditions:
 
@@ -185,7 +213,7 @@ If no requirements match, the default variant (no `|variant`) is shown.
 
 ------
 
-## **Response**
+### Response
 
 ```ini
 [Response:wave]
@@ -200,7 +228,7 @@ leads_to=goodbye
 
 ------
 
-## **Item**
+### Item
 
 ```ini
 [Item:the_ring]
@@ -211,7 +239,11 @@ Items can be given to or taken from the player via actions.
 
 ------
 
-## **Action**
+### Action
+
+Actions are powerful tools for changing the state of your game. They can move the player, give or take items, swap things out, or even end the game. All by modifying other entities in response to what the player does.
+
+Here are some example actions:
 
 ```ini
 [Action:pull_lever]
@@ -219,7 +251,7 @@ change_room=WoodShed->closed
 description=You pull the hefty lever and hear a satisfying clunk! Immediately, the lights go out, and the lever seizes in place.
 
 [Action:pay_bribe]
-give_item=silver_coin
+take_item=silver_coin
 description=You give away your last coin begrudgingly.
 
 [Action:unlock_chest]
@@ -227,7 +259,7 @@ replace_item=key->ring
 description=You unlock the chest and discover a golden ring!
 
 [Action:pickup_key]
-take_item=key
+give_item=key
 description=You pick up the dingy key on the floor.
 
 [Action:beam_me_up]
@@ -241,26 +273,23 @@ required=golden_ticket
 description=You don't quite know what just happened, but you are now on a spaceship with a ring in your hand!
 ```
 
-Actions perform in-game effects. Supported types:
+#### Action Types
 
-- `ChangeRoom`: Changes a room to the specified variant.
+You can define several types of actions:
+
+- `ChangeRoom`: Updates the to a specified variant.
 - `GiveItem`: Adds items to the player's inventory.
 - `TakeItem`: Removes items from the player's inventory.
 - `ReplaceItem`: Swaps one item for another.
-- `Teleport`: Instantly moves the player to a room.
-- `Sequence`: Chains multiple actions.
+- `Teleport`: Instantly moves the player to a different room.
+- `Sequence`: Chains together multiple actions in order.
 
-The `Teleport`, `Sequence`, and `ChangeRoom` actions may include a `required` field. This specifies an item the player must have to perform the action. If used, the item is consumed when the action is executed.
+The actions `Teleport`, `Sequence`, and `ChangeRoom` include an optional `required` field. If specified, the required item must be in the player's inventory to perform the action. Additionally, when that action is completed, that item is then removed from the player's inventory.
 
-------
+#### Using Actions To Create A Dynamic Story
 
-## **Multiline Text**
+Actions make your game feel alive. For example, suppose an event requires that characters move between rooms. You can combine a `ChangeRoom` and a `Sequence` to update multiple rooms at once, switching them to a variant where those characters are in new locations.
 
-Wrap multiline strings in triple quotes:
+Furthermore, if you need to trigger a conversation, a single `GiveItem` action can do . Since dialogues and responses are switched by room variants and items in the players inventory, giving the player an item can open up new dialogue options. Additionally, if you want to end the game at any point, can use the `Teleport` action to send the player to a room with no exits, as that ends the game.
 
-```ini
-description="""
-    A cold wind blows.
-    You see your breath.
-"""
-```
+Actions aren’t just mechanics, they are key to telling a dynamic story.

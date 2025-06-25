@@ -177,7 +177,12 @@ impl GameState {
         use Action::*;
         match action {
             GiveItem(g) => {
-                required.extend(g.items());
+                if let Some(r) = g.required() {
+                    required.push(r);
+                }
+            }
+            TakeItem(t) => {
+                required.extend(t.items());
             }
             ChangeRoom(c) => {
                 if let Some(r) = c.required() {
@@ -186,11 +191,6 @@ impl GameState {
             }
             ReplaceItem(r) => {
                 required.push(r.original());
-            }
-            TakeItem(t) => {
-                if let Some(r) = t.required() {
-                    required.push(r);
-                }
             }
             Teleport(t) => {
                 if let Some(r) = t.required() {
@@ -221,19 +221,19 @@ impl GameState {
                 }
             }
             GiveItem(g) => {
-                for i in g.items() {
+                if let Some(r) = g.required() {
+                    self.inventory.remove(r);
+                }
+                self.inventory.extend(g.items().clone());
+            }
+            TakeItem(t) => {
+                for i in t.items() {
                     self.inventory.remove(i);
                 }
             }
             ReplaceItem(r) => {
                 self.inventory.remove(r.original());
                 self.inventory.insert(r.replacement().clone());
-            }
-            TakeItem(t) => {
-                if let Some(r) = t.required() {
-                    self.inventory.remove(r);
-                }
-                self.inventory.extend(t.items().clone());
             }
             Teleport(t) => {
                 if let Some(r) = t.required() {

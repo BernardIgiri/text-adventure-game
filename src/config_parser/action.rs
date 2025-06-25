@@ -130,11 +130,30 @@ fn next_give_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> Action
     let record = record.into_record(&["give_item", "description"], &[])?;
     let items = items_from_record(&record, "give_item", item_map)?;
     let description = record.require("description")?;
+    let required = required_item_from_record(&record, item_map)?;
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
         Action::GiveItem(
             GiveItem::builder()
+                .name(name)
+                .description(description.into())
+                .items(items)
+                .maybe_required(required)
+                .build(),
+        ),
+    )))
+}
+
+fn next_take_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> ActionResult {
+    let record = record.into_record(&["take_item", "description"], &["required"])?;
+    let items = items_from_record(&record, "take_item", item_map)?;
+    let description = record.require("description")?;
+    let name = record.parse_name::<Identifier>()?;
+    Ok(Some((
+        name.clone(),
+        Action::TakeItem(
+            TakeItem::builder()
                 .name(name)
                 .description(description.into())
                 .items(items)
@@ -173,25 +192,6 @@ fn next_replace_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> Act
                 .description(description.into())
                 .original(original)
                 .replacement(replacement)
-                .build(),
-        ),
-    )))
-}
-
-fn next_take_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> ActionResult {
-    let record = record.into_record(&["take_item", "description"], &["required"])?;
-    let items = items_from_record(&record, "take_item", item_map)?;
-    let description = record.require("description")?;
-    let required = required_item_from_record(&record, item_map)?;
-    let name = record.parse_name::<Identifier>()?;
-    Ok(Some((
-        name.clone(),
-        Action::TakeItem(
-            TakeItem::builder()
-                .name(name)
-                .description(description.into())
-                .items(items)
-                .maybe_required(required)
                 .build(),
         ),
     )))
@@ -293,7 +293,7 @@ mod test {
         description=You pull the hefty lever and hear a sastifying clunk! Immediately, the lights go out, and lever seizes in place!
 
         [Action:pay_bribe]
-        give_item=silver_coin
+        take_item=silver_coin
         description=You give away your last coin begrudgingly.
 
         [Action:unlock_chest]
@@ -301,7 +301,7 @@ mod test {
         description=You unlock the chest and discover a golden ring!
 
         [Action:pickup_key]
-        take_item=key
+        give_item=key
         description=You pick up the dingy key on the floor.
         
         [Action:beam_me_up]
@@ -336,7 +336,7 @@ mod test {
 
         let pay_bribe = actions.get(&i("pay_bribe")).unwrap();
         assert_that!(pay_bribe).satisfies_with_message("expected GiveItem", |a| {
-            matches!(a.as_ref(), Action::GiveItem(a)
+            matches!(a.as_ref(), Action::TakeItem(a)
                 if a.description().contains("begrudgingly")
                 && a.items().len() == 1
                 && a.items()[0].name() == &i("silver_coin")
@@ -354,7 +354,7 @@ mod test {
 
         let pickup_key = actions.get(&i("pickup_key")).unwrap();
         assert_that!(pickup_key).satisfies_with_message("expected TakeItem", |a| {
-            matches!(a.as_ref(), Action::TakeItem(a)
+            matches!(a.as_ref(), Action::GiveItem(a)
                 if a.description().contains("dingy key")
                 && a.required().is_none()
                 && a.items().len() == 1

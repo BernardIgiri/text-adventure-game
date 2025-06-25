@@ -52,17 +52,24 @@ jobs:
           exit 1
         fi
 
-    - name: Package binary
+    - name: Package binary (Unix)
+      if: matrix.os != 'windows-latest'
       shell: bash
       run: |
         mkdir dist
         cp target/${{ matrix.target }}/release/text-adventure-game* dist/
         cd dist
-        if [[ "${{ matrix.ext }}" == "tar.gz" ]]; then
-          tar -czvf ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }} *
-        else
-          zip ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }} *
-        fi
+        tar -czvf ../text-adventure-game-${{ matrix.target }}.${{ matrix.ext }} *
+
+    - name: Package binary (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        $output = "text-adventure-game-${{ matrix.target }}.${{ matrix.ext }}"
+        $input = Get-ChildItem target/${{ matrix.target }}/release/text-adventure-game*.exe
+        mkdir dist
+        Copy-Item $input.FullName -Destination dist/
+        Compress-Archive -Path dist/* -DestinationPath $output
 
     - name: Upload release asset
       uses: softprops/action-gh-release@v2

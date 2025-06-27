@@ -5,7 +5,8 @@ Welcome to **Text Adventure Game,** a friendly game engine for making interactiv
 With a  plain text file, you can create your own dynamic story driven adventure. Define rooms that change with events, characters to talk to, and conversations that evolve with the story. You can even customize the theme with your own colors, or change the default game text to match your language or style of speech. After you define your game in an `.ini` file, you can run the engine with it, and bring your text adventure game to life!
 
 ## 📚 Table of Contents
-
+<details>
+    <summary>(Click to expand)</summary>
 - [🧭 Instructions](#-instructions)
   - [▶️ Run the game](#️-run-the-game)
   - [📦 Download](#-download)
@@ -27,6 +28,7 @@ With a  plain text file, you can create your own dynamic story driven adventure.
   - [Action](#action)
     - [Action Types](#action-types)
     - [Using Actions to Create a Dynamic Story](#using-actions-to-create-a-dynamic-story)
+</details>
 
 ## 🧭 Instructions
 

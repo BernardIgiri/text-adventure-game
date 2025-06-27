@@ -6,28 +6,42 @@ With a  plain text file, you can create your own dynamic story driven adventure.
 
 ## 📚 Table of Contents
 <details>
-    <summary>(Click to expand)</summary>
-- [🧭 Instructions](#-instructions)
-  - [▶️ Run the game](#️-run-the-game)
-  - [📦 Download](#-download)
-  - [🧪 Try the demo](#-try-the-demo)
-  - [🧐 Detailed instructions](#-detailed-instructions)
-- [📄 INI File Structure](#-ini-file-structure)
-  - [Multi-line Strings](#multi-line-strings)
-  - [Root Section: Game Title](#root-section-game-title)
-  - [[Theme] (Optional)](#theme-optional)
-  - [[Language] (Optional)](#language-optional)
-- [📦 Game Entities](#-game-entities)
-  - [Naming Conventions](#naming-conventions)
-  - [Entity Variants](#entity-variants)
-  - [Room](#room)
-  - [Character](#character)
-  - [Dialogue](#dialogue)
-  - [Response](#response)
-  - [Item](#item)
-  - [Action](#action)
-    - [Action Types](#action-types)
-    - [Using Actions to Create a Dynamic Story](#using-actions-to-create-a-dynamic-story)
+  <summary>(Click to expand)</summary>
+  <ul>
+    <li><a href="#-instructions">🧭 Instructions</a>
+      <ul>
+        <li><a href="#️-run-the-game">▶️ Run the game</a></li>
+        <li><a href="#-download">📦 Download</a></li>
+        <li><a href="#-try-the-demo">🧪 Try the demo</a></li>
+        <li><a href="#-detailed-instructions">🧐 Detailed instructions</a></li>
+      </ul>
+    </li>
+    <li><a href="#-ini-file-structure">📄 INI File Structure</a>
+      <ul>
+        <li><a href="#multi-line-strings">Multi-line Strings</a></li>
+        <li><a href="#root-section-game-title">Root Section: Game Title</a></li>
+        <li><a href="#theme-optional">[Theme] (Optional)</a></li>
+        <li><a href="#language-optional">[Language] (Optional)</a></li>
+      </ul>
+    </li>
+    <li><a href="#-game-entities">📦 Game Entities</a>
+      <ul>
+        <li><a href="#naming-conventions">Naming Conventions</a></li>
+        <li><a href="#entity-variants">Entity Variants</a></li>
+        <li><a href="#room">Room</a></li>
+        <li><a href="#character">Character</a></li>
+        <li><a href="#dialogue">Dialogue</a></li>
+        <li><a href="#response">Response</a></li>
+        <li><a href="#item">Item</a></li>
+        <li><a href="#action">Action</a>
+          <ul>
+            <li><a href="#action-types">Action Types</a></li>
+            <li><a href="#using-actions-to-create-a-dynamic-story">Using Actions to Create a Dynamic Story</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
 </details>
 
 ## 🧭 Instructions

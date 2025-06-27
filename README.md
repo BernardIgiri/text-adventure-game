@@ -4,6 +4,30 @@ Welcome to **Text Adventure Game,** a friendly game engine for making interactiv
 
 With a  plain text file, you can create your own dynamic story driven adventure. Define rooms that change with events, characters to talk to, and conversations that evolve with the story. You can even customize the theme with your own colors, or change the default game text to match your language or style of speech. After you define your game in an `.ini` file, you can run the engine with it, and bring your text adventure game to life!
 
+## 📚 Table of Contents
+
+- [🧭 Instructions](#-instructions)
+  - [▶️ Run the game](#️-run-the-game)
+  - [📦 Download](#-download)
+  - [🧪 Try the demo](#-try-the-demo)
+  - [🧐 Detailed instructions](#-detailed-instructions)
+- [📄 INI File Structure](#-ini-file-structure)
+  - [Multi-line Strings](#multi-line-strings)
+  - [Root Section: Game Title](#root-section-game-title)
+  - [[Theme] (Optional)](#theme-optional)
+  - [[Language] (Optional)](#language-optional)
+- [📦 Game Entities](#-game-entities)
+  - [Naming Conventions](#naming-conventions)
+  - [Entity Variants](#entity-variants)
+  - [Room](#room)
+  - [Character](#character)
+  - [Dialogue](#dialogue)
+  - [Response](#response)
+  - [Item](#item)
+  - [Action](#action)
+    - [Action Types](#action-types)
+    - [Using Actions to Create a Dynamic Story](#using-actions-to-create-a-dynamic-story)
+
 ## 🧭 Instructions
 
 To run the game, first install or download `text-adventure-game`, then create an `.ini` file describing your game world, or use the example file below.
@@ -38,8 +62,72 @@ Just download and unzip the file for your OS below.
 
 Try this [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini) demo game. Right-click the link and choose **“Save Link As…”** to save it.
 
+### 🧐 Detailed Instructions
+<details>
+    <summary>(Click to expand)</summary>
 
-## INI File Structure
+#### 🪟 On Windows:
+
+1. Open the **Start Menu**, type `cmd`, and press **Enter** to open Command Prompt.
+
+2. Use `cd` to go to the folder where you extracted the files:
+
+   ```powershell
+   cd path\to\your\download\folder
+   ```
+
+3. Then run:
+
+   ```powershell
+   text-adventure-game.exe -f example.ini
+   ```
+
+#### 🍎 On macOS:
+
+1. Open the **Terminal** (search for it using Spotlight with `⌘ + Space`).
+
+2. Navigate to your download folder:
+
+   ```bash
+   cd ~/Downloads
+   ```
+
+3. Make the app executable if needed:
+
+   ```bash
+   chmod +x text-adventure-game
+   ```
+
+4. Then run:
+
+   ```bash
+   ./text-adventure-game -f example.ini
+   ```
+
+#### 🐧 On Linux:
+
+1. Open your terminal.
+
+2. Navigate to where you extracted the files:
+
+    ```bash
+    cd ~/Downloads
+    ```
+
+3. Make it executable (if needed):
+
+    ```bash
+    chmod +x text-adventure-game
+    ```
+
+4. Then run:
+
+    ```bash
+    ./text-adventure-game -f example.ini
+    ```
+</details>
+
+## 📄 INI File Structure
 
 Every game is defined in a single `.ini` file, a simple, old-school format that's easy to read and edit. This file is divided into sections that describe a part of your game world: the title screen, theme, rooms, characters, and more. You can add comments with semicolons  `;`  to provide context within your file.
 
@@ -112,7 +200,7 @@ press_q_to_quit = The letter q is for quit!
 
 ------
 
-## Game Entities
+## 📦 Game Entities
 
 Each entity section starts with one of the following headers:
 

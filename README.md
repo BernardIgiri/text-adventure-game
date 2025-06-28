@@ -16,6 +16,7 @@ With a  plain text file, you can create your own dynamic story driven adventure.
         <li><a href="#-try-the-demo">🧪 Try the demo</a></li>
       </ul>
     </li>
+    <li><a href="#-learn-how-it-was-made">📰 Learn How It Was Made</a></li>
     <li><a href="#-ini-file-structure">📄 INI File Structure</a>
       <ul>
         <li><a href="#multi-line-strings">Multi-line Strings</a></li>
@@ -158,6 +159,10 @@ Just download and unzip the file for your OS below.
 ### 🧪 Try the Demo
 
 Try this [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini) demo game. Right-click the link and choose **“Save Link As…”** to save it.
+
+## 📰 Learn How It Was Made
+
+Read about the development process for this project on [Y = Code!](https://yequalscode.com/posts/making-text-adventure-game)
 
 ## 📄 INI File Structure
 

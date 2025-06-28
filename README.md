@@ -6,14 +6,14 @@ With a  plain text file, you can create your own dynamic story driven adventure.
 
 ## 📚 Table of Contents
 <details>
-  <summary>(Click to expand)</summary>
+  <summary>(Click to see table of contents)</summary>
   <ul>
     <li><a href="#-instructions">🧭 Instructions</a>
       <ul>
+        <li><a href="#-detailed-instructions">🧐 Detailed instructions</a></li>
         <li><a href="#️-run-the-game">▶️ Run the game</a></li>
         <li><a href="#-download">📦 Download</a></li>
         <li><a href="#-try-the-demo">🧪 Try the demo</a></li>
-        <li><a href="#-detailed-instructions">🧐 Detailed instructions</a></li>
       </ul>
     </li>
     <li><a href="#-ini-file-structure">📄 INI File Structure</a>
@@ -48,6 +48,87 @@ With a  plain text file, you can create your own dynamic story driven adventure.
 
 To run the game, first install or download `text-adventure-game`, then create an `.ini` file describing your game world, or use the example file below.
 
+### 🧐 Detailed Instructions
+<details>
+    <summary>(Click to read detailed instructions)</summary>
+
+#### 🪟 On Windows:
+
+1. [Download the game for Windows](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-pc-windows-msvc.zip).
+2. Right-click the `.zip` file and select **Extract All...**.
+3. [Download `example.ini`](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini)  
+   - Right-click the link → **Save link as...**
+4. Move `example.ini` into the folder where you extracted the game.
+5. Open the **Start Menu**, type `cmd`, and press **Enter** to open Command Prompt.
+6. Navigate to the folder where you extracted the files:
+   ```powershell
+   cd path\to\your\download\folder
+	````
+
+7. Run the game:
+
+   ```powershell
+   text-adventure-game.exe -f example.ini
+   ```
+
+#### 🍎 On macOS:
+
+1. [Download the game for macOS](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-apple-darwin.tar.gz).
+2. Open **Finder**, then double-click the `.tar.gz` to extract the app.
+3. [Download `example.ini`](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini)
+
+   * Control-click the link → **Download Linked File As...**
+4. Move `example.ini` into the folder with the game binary.
+5. Open **Terminal** (use Spotlight with `⌘ + Space`, then type “Terminal”).
+6. Navigate to your Downloads folder:
+
+   ```bash
+   cd ~/Downloads
+   ```
+7. macOS blocks running unsigned apps by default. To fix this:
+
+   * Run:
+
+     ```bash
+     chmod +x text-adventure-game
+     ```
+   * Then attempt to run it:
+
+     ```bash
+     ./text-adventure-game -f example.ini
+     ```
+   * If macOS blocks it, go to **System Settings → Privacy & Security**, scroll down, and click **"Allow Anyway"**.
+   * Then try running it again.
+
+#### 🐧 On Linux:
+
+1. [Download the game for Linux](https://github.com/BernardIgiri/text-adventure-game/releases/latest/download/text-adventure-game-x86_64-unknown-linux-musl.tar.gz).
+2. Extract it using your file manager, or run:
+
+   ```bash
+   tar -xzf text-adventure-game-x86_64-unknown-linux-musl.tar.gz
+   ```
+3. [Download `example.ini`](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini)
+
+   * Right-click the link → **Save Link As...**
+4. Move `example.ini` to the same folder as the extracted binary.
+5. Open your terminal and navigate to that folder:
+
+   ```bash
+   cd ~/Downloads
+   ```
+6. Make the game executable:
+
+   ```bash
+   chmod +x text-adventure-game
+   ```
+7. Run the game:
+
+   ```bash
+   ./text-adventure-game -f example.ini
+   ```
+</details>
+
 ### ▶️ Run The Game
 
 On **Linux or macOS**, open a terminal and run:
@@ -77,71 +158,6 @@ Just download and unzip the file for your OS below.
 ### 🧪 Try the Demo
 
 Try this [example.ini](https://raw.githubusercontent.com/BernardIgiri/text-adventure-game/refs/heads/main/example.ini) demo game. Right-click the link and choose **“Save Link As…”** to save it.
-
-### 🧐 Detailed Instructions
-<details>
-    <summary>(Click to expand)</summary>
-
-#### 🪟 On Windows:
-
-1. Open the **Start Menu**, type `cmd`, and press **Enter** to open Command Prompt.
-
-2. Use `cd` to go to the folder where you extracted the files:
-
-   ```powershell
-   cd path\to\your\download\folder
-   ```
-
-3. Then run:
-
-   ```powershell
-   text-adventure-game.exe -f example.ini
-   ```
-
-#### 🍎 On macOS:
-
-1. Open the **Terminal** (search for it using Spotlight with `⌘ + Space`).
-
-2. Navigate to your download folder:
-
-   ```bash
-   cd ~/Downloads
-   ```
-
-3. Make the app executable if needed:
-
-   ```bash
-   chmod +x text-adventure-game
-   ```
-
-4. Then run:
-
-   ```bash
-   ./text-adventure-game -f example.ini
-   ```
-
-#### 🐧 On Linux:
-
-1. Open your terminal.
-
-2. Navigate to where you extracted the files:
-
-    ```bash
-    cd ~/Downloads
-    ```
-
-3. Make it executable (if needed):
-
-    ```bash
-    chmod +x text-adventure-game
-    ```
-
-4. Then run:
-
-    ```bash
-    ./text-adventure-game -f example.ini
-    ```
-</details>
 
 ## 📄 INI File Structure
 

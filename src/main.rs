@@ -13,7 +13,7 @@ use core::GameState;
 use player::Player;
 use std::{fs::File, path::PathBuf};
 use tracing::{self, info};
-use tracing_subscriber::{fmt::writer::BoxMakeWriter, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt::writer::BoxMakeWriter};
 use ui::*;
 
 #[derive(Parser)]
@@ -33,7 +33,7 @@ fn main() {
         .init();
     if let Err(e) = play() {
         tracing::error!("Error: {:#?}", e);
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
     }
 }
 

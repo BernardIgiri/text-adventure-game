@@ -8,7 +8,7 @@ use ini::Ini;
 
 use crate::{config_parser, error};
 
-use super::{entity::*, Identifier, Title, World};
+use super::{Identifier, Title, World, entity::*};
 
 #[derive(Debug)]
 pub struct GameState {
@@ -51,7 +51,7 @@ impl GameState {
         self.current_room = Some(room.name().clone());
     }
     pub fn trigger_response(&mut self, response: &Response) -> Option<Rc<Action>> {
-        info!("trigger_response({:#?})", response);
+        info!("trigger_response({response:#?})");
         response
             .triggers()
             .as_ref()
@@ -65,7 +65,7 @@ impl GameState {
             .cloned()
     }
     pub fn do_action(&mut self, action: &Action) -> bool {
-        info!("do_action({:#?})", action);
+        info!("do_action({action:#?})");
         if self.action_requirement_met(action) {
             self.complete_action(action);
             true
@@ -384,22 +384,24 @@ mod test {
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
         assert!(state.current_room().variant().clone().is_none());
-        assert_that!(state.do_action(&Action::ChangeRoom(
-            ChangeRoom::builder()
-                .name(i("close_door"))
-                .description("".into())
-                .room(
-                    state
-                        .world
-                        .rooms()
-                        .get(&id)
-                        .unwrap()
-                        .get(&Some(i("closed")))
-                        .unwrap()
-                        .clone()
-                )
-                .build()
-        )))
+        assert_that!(
+            state.do_action(&Action::ChangeRoom(
+                ChangeRoom::builder()
+                    .name(i("close_door"))
+                    .description("".into())
+                    .room(
+                        state
+                            .world
+                            .rooms()
+                            .get(&id)
+                            .unwrap()
+                            .get(&Some(i("closed")))
+                            .unwrap()
+                            .clone()
+                    )
+                    .build()
+            ))
+        )
         .is_true();
         assert_eq!(
             state.look_up_room(&id).unwrap().variant().clone(),
@@ -416,23 +418,25 @@ mod test {
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
         assert!(state.current_room().variant().clone().is_none());
-        assert_that!(state.do_action(&Action::ChangeRoom(
-            ChangeRoom::builder()
-                .name(i("close_door"))
-                .description("".into())
-                .room(
-                    state
-                        .world
-                        .rooms()
-                        .get(&id)
-                        .unwrap()
-                        .get(&Some(i("closed")))
-                        .unwrap()
-                        .clone()
-                )
-                .required(item)
-                .build()
-        )))
+        assert_that!(
+            state.do_action(&Action::ChangeRoom(
+                ChangeRoom::builder()
+                    .name(i("close_door"))
+                    .description("".into())
+                    .room(
+                        state
+                            .world
+                            .rooms()
+                            .get(&id)
+                            .unwrap()
+                            .get(&Some(i("closed")))
+                            .unwrap()
+                            .clone()
+                    )
+                    .required(item)
+                    .build()
+            ))
+        )
         .is_false();
         assert_eq!(state.look_up_room(&id).unwrap().variant().clone(), None);
         assert_eq!(state.current_room().name().clone(), id);
@@ -447,23 +451,25 @@ mod test {
         let id = t("WoodShed");
         state.current_room = Some(id.clone());
         assert!(state.current_room().variant().clone().is_none());
-        assert_that!(state.do_action(&Action::ChangeRoom(
-            ChangeRoom::builder()
-                .name(i("close_door"))
-                .description("".into())
-                .room(
-                    state
-                        .world
-                        .rooms()
-                        .get(&id)
-                        .unwrap()
-                        .get(&Some(i("closed")))
-                        .unwrap()
-                        .clone()
-                )
-                .required(item)
-                .build()
-        )))
+        assert_that!(
+            state.do_action(&Action::ChangeRoom(
+                ChangeRoom::builder()
+                    .name(i("close_door"))
+                    .description("".into())
+                    .room(
+                        state
+                            .world
+                            .rooms()
+                            .get(&id)
+                            .unwrap()
+                            .get(&Some(i("closed")))
+                            .unwrap()
+                            .clone()
+                    )
+                    .required(item)
+                    .build()
+            ))
+        )
         .is_true();
         assert_eq!(state.current_room().name().clone(), id);
         assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
@@ -474,15 +480,18 @@ mod test {
         let (mut state, ..) = make_game();
         let id = t("Field");
         state.current_room = Some(t("WoodShed"));
-        assert_that!(state.do_action(&Action::Teleport(
-            Teleport::builder()
-                .name(i("beam_me_up"))
-                .description(
-                    "You suddenly find yourself naked in an open field! The wind is cold...".into()
-                )
-                .room_name(id.clone())
-                .build()
-        )))
+        assert_that!(
+            state.do_action(&Action::Teleport(
+                Teleport::builder()
+                    .name(i("beam_me_up"))
+                    .description(
+                        "You suddenly find yourself naked in an open field! The wind is cold..."
+                            .into()
+                    )
+                    .room_name(id.clone())
+                    .build()
+            ))
+        )
         .is_true();
         assert_eq!(state.current_room().name().clone(), id);
     }

@@ -65,40 +65,32 @@ impl FromStr for Title {
 #[cfg(test)]
 mod test {
     use super::*;
+    use asserting::prelude::*;
 
     #[test]
     fn valid_identifier() {
-        let id: Identifier = "test_aid15-8".parse().unwrap();
-        assert_eq!(id.to_string(), "test_aid_15_8".to_string());
-        let id: Identifier = "t".parse().unwrap();
-        assert_eq!(id.to_string(), "t".to_string());
+        let list = ["test_aid15-8", "t"].map(Identifier::from_str);
+        assert_that!(&list).each_item(|e| e.is_ok());
+        assert_that!(list.map(|i| i.unwrap().to_string())).contains_exactly(["test_aid_15_8", "t"]);
     }
 
     #[test]
     fn valid_title() {
-        let title: Title = "ATitleThat_big".parse().unwrap();
-        assert_eq!(title.to_string(), "A Title That Big".to_string());
-        let title: Title = "Al".parse().unwrap();
-        assert_eq!(title.to_string(), "Al".to_string());
+        let list = ["ATitleThat_big", "Al"].map(Title::from_str);
+        assert_that!(&list).each_item(|e| e.is_ok());
+        assert_that!(list.map(|i| i.unwrap().to_string()))
+            .contains_exactly(["A Title That Big", "Al"]);
     }
 
     #[test]
     fn invalid_identifier() {
-        let id = "test_aid15?".parse::<Identifier>();
-        assert!(id.is_err(), "{:?}", id);
-        let id = "Test_aid15".parse::<Identifier>();
-        assert!(id.is_err(), "{:?}", id);
-        let id = "T".parse::<Identifier>();
-        assert!(id.is_err(), "{:?}", id);
+        assert_that!(["test_aid15?", "Test_aid15", "T"].map(Identifier::from_str))
+            .each_item(|e| e.is_err());
     }
 
     #[test]
     fn invalid_title() {
-        let title = "aTitleThat_big".parse::<Title>();
-        assert!(title.is_err(), "{:?}", title);
-        let title = "a".parse::<Title>();
-        assert!(title.is_err(), "{:?}", title);
-        let title = "1aTitleThat_big".parse::<Title>();
-        assert!(title.is_err(), "{:?}", title);
+        assert_that!(["aTitleThat_big", "a", "1aTitleThat_big"].map(Title::from_str))
+            .each_item(|e| e.is_err());
     }
 }

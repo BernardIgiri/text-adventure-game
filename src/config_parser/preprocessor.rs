@@ -44,7 +44,7 @@ pub fn preprocess(input: &str) -> Result<String, error::Application> {
         if in_block {
             if trimmed == STR_DELIMITER {
                 let escaped = current_line.trim_end().replace('\n', ESCAPED_NEWLINE);
-                output.push_str(&format!("{}={}\n", current_key, escaped));
+                output.push_str(&format!("{current_key}={escaped}\n"));
                 in_block = false;
             } else {
                 current_line.push_str(line);

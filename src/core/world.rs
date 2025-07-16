@@ -6,8 +6,8 @@ use derive_getters::Getters;
 use crate::error;
 
 use super::{
-    entity::{CharacterRefs, ResponseRefs, RoomRefs, SequenceRefs},
-    Action, ActionMap, Character, DialogueMap, GameTitle, Language, Response, RoomMap, Theme,
+    ActionEntity, ActionMap, CharacterEntity, DialogueMap, GameTitle, Language, ResponseEntity,
+    RoomMap, Theme,
 };
 
 #[derive(Debug, Getters)]
@@ -30,8 +30,8 @@ impl World {
         actions: ActionMap,
         rooms: RoomMap,
         dialogues: DialogueMap,
-        characters: Vec<Rc<Character>>,
-        responses: Vec<Rc<Response>>,
+        characters: Vec<Rc<CharacterEntity>>,
+        responses: Vec<Rc<ResponseEntity>>,
     ) -> Result<Self, error::Application> {
         // find missing defaults
         for (id, inner) in rooms.iter() {
@@ -53,21 +53,20 @@ impl World {
         // Find missing ids
         let mut missing_dialogue_ids = characters
             .iter()
-            .map(|c| CharacterRefs::new(c).start_dialogue().clone())
+            .map(|c| c.start_dialogue().clone())
             .filter(|id| !dialogues.contains_key(id))
             .map(|id| id.to_string())
             .collect::<Vec<_>>();
         missing_dialogue_ids.extend(
             responses
                 .iter()
-                .filter_map(|r| ResponseRefs::new(r).leads_to().clone())
+                .filter_map(|r| r.leads_to().clone())
                 .filter(|id| !dialogues.contains_key(id))
                 .map(|id| id.to_string()),
         );
         let mut missing_room_ids = Vec::<String>::new();
         let mut missing_action_ids = Vec::<String>::new();
         for r in rooms.values().flat_map(|inner| inner.values()) {
-            let r = RoomRefs::new(r);
             missing_action_ids.extend(
                 r.actions()
                     .iter()
@@ -85,19 +84,19 @@ impl World {
             missing_room_ids.push(title.start_room().to_string());
         }
         for a in actions.values() {
-            if let Action::Sequence(s) = &**a {
-                let sref = SequenceRefs::new(s);
-                let m = sref
+            if let ActionEntity::Sequence(s) = &**a {
+                let m = s
                     .actions()
                     .iter()
                     .filter(|id| !actions.contains_key(id))
                     .map(|id| id.to_string());
                 missing_action_ids.extend(m);
-                if let Some(child_id) = sref
-                    .actions()
-                    .iter()
-                    .find(|id| matches!(actions.get(id).map(|a| &**a), Some(Action::Sequence(_))))
-                {
+                if let Some(child_id) = s.actions().iter().find(|id| {
+                    matches!(
+                        actions.get(id).map(|a| &**a),
+                        Some(ActionEntity::Sequence(_))
+                    )
+                }) {
                     return Err(error::CircularReferenceFound {
                         entity: "Action::Sequence",
                         parent_id: s.name().to_string(),
@@ -230,7 +229,7 @@ mod test {
         let mut data = WorldData::new();
         data.actions.insert(
             i("bad_action"),
-            Rc::new(Action::Sequence(
+            Rc::new(ActionEntity::Sequence(
                 Sequence::builder()
                     .name(i("bad_action"))
                     .description("".into())

@@ -3,8 +3,8 @@ use std::{
     rc::Rc,
 };
 
-use cursive::reexports::log::info;
 use ini::Ini;
+use tracing::info;
 
 use crate::{config_parser, error};
 
@@ -13,21 +13,22 @@ use super::{Identifier, Title, World, entity::*};
 #[derive(Debug)]
 pub struct GameState {
     world: World,
-    current_room: Option<Title>,
+    current_room: Title,
     inventory: HashSet<Rc<Item>>,
     active_room_variants: HashMap<Title, Identifier>,
 }
 
-// Game state already handled in World
+// Game state data already verified in World
 #[allow(clippy::expect_used)]
 impl GameState {
     pub fn from_ini(ini: Ini) -> Result<Self, error::Application> {
         Ok(Self::new(config_parser::parse(ini)?))
     }
     pub fn new(world: World) -> Self {
+        let current_room = world.title().start_room().clone();
         Self {
             world,
-            current_room: None,
+            current_room,
             inventory: HashSet::new(),
             active_room_variants: HashMap::new(),
         }
@@ -47,78 +48,8 @@ impl GameState {
     pub fn language(&self) -> Rc<Language> {
         self.world.language().clone()
     }
-    pub fn enter_room(&mut self, room: Rc<Room>) {
-        self.current_room = Some(room.name().clone());
-    }
-    pub fn trigger_response(&mut self, response: &Response) -> Option<Rc<Action>> {
-        info!("trigger_response({response:#?})");
-        response
-            .triggers()
-            .as_ref()
-            .and_then(|action| {
-                if self.do_action(action) {
-                    Some(action)
-                } else {
-                    None
-                }
-            })
-            .cloned()
-    }
-    pub fn do_action(&mut self, action: &Action) -> bool {
-        info!("do_action({action:#?})");
-        if self.action_requirement_met(action) {
-            self.complete_action(action);
-            true
-        } else {
-            false
-        }
-    }
-    pub fn current_room(&self) -> Rc<Room> {
-        self.look_up_room(
-            &self
-                .current_room
-                .clone()
-                .unwrap_or_else(|| self.world.title().start_room().clone()),
-        )
-        .expect("All rooms should exist in the world!")
-    }
-    pub fn character_start_dialogue(&self, character: &Character) -> Rc<Dialogue> {
-        self.look_up_dialogue(CharacterRefs::new(character).start_dialogue())
-    }
-    pub fn dialogue_responses(&self, dialogue: &Dialogue) -> Vec<Rc<Response>> {
-        DialogueRefs::new(dialogue)
-            .responses()
-            .iter()
-            .filter(|response| {
-                response.requires().is_empty()
-                    || response.requires().iter().all(|r| self.requirement_met(r))
-            })
-            .cloned()
-            .collect()
-    }
-    pub fn room_actions(&self, room: &Room) -> Vec<Rc<Action>> {
-        RoomRefs::new(room)
-            .actions()
-            .iter()
-            .filter_map(|name| self.world.actions().get(name))
-            .cloned()
-            .collect()
-    }
-    pub fn room_exits(&self, room: &Room) -> Vec<Rc<Room>> {
-        RoomRefs::new(room)
-            .exits()
-            .values()
-            .map(|name| {
-                self.look_up_room(name)
-                    .expect("All Room exits should be in the world!")
-            })
-            .collect()
-    }
-    pub fn response_reply(&self, response: &Response) -> Option<Rc<Dialogue>> {
-        ResponseRefs::new(response)
-            .leads_to()
-            .as_ref()
-            .map(|name| self.look_up_dialogue(name))
+    pub fn current_room(&self) -> Room<'_, Self> {
+        self.lookup_room(&self.current_room).to_proxy(self)
     }
     pub fn has_inventory(&self) -> bool {
         !self.inventory.is_empty()
@@ -129,52 +60,18 @@ impl GameState {
             .map(|i| i.description().to_string())
             .collect()
     }
-    fn look_up_room(&self, name: &Title) -> Option<Rc<Room>> {
-        let variant = self.active_room_variants.get(name).cloned();
-        self.world.rooms().get(name)?.get(&variant).cloned()
-    }
-    fn look_up_dialogue(&self, id: &Identifier) -> Rc<Dialogue> {
-        let variants = self
-            .world
-            .dialogues()
-            .get(id)
-            .expect("All dialogue ids should be in the world!");
-        variants
-            .values()
-            .filter_map(|dialogue| {
-                let count = dialogue
-                    .requires()
-                    .iter()
-                    .filter(|req| self.requirement_met(req))
-                    .count();
-                if dialogue.requires().len() != count || count == 0 {
-                    None
-                } else {
-                    Some((count, dialogue))
-                }
-            })
-            .max_by_key(|(k, _)| *k)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| {
-                variants
-                    .get(&None)
-                    .expect("All dialogues should have a default variant")
-            })
-            .clone()
-    }
     fn requirement_met(&self, requirement: &Requirement) -> bool {
         match requirement {
             Requirement::HasItem(needed_item) => self.inventory.contains(needed_item),
             Requirement::DoesNotHave(needed_item) => !self.inventory.contains(needed_item),
-            Requirement::RoomVariant(expected_room) => {
-                let expected_name = expected_room.name();
-                expected_room.variant() == &self.active_room_variants.get(expected_name).cloned()
+            Requirement::RoomVariant(expected) => {
+                expected.variant() == &self.active_room_variants.get(expected.name()).cloned()
             }
         }
     }
-    fn action_requirement_met(&self, action: &Action) -> bool {
+    fn action_requirement_met(&self, action: &ActionEntity) -> bool {
         let mut required = Vec::new();
-        use Action::*;
+        use ActionEntity::*;
         match action {
             GiveItem(g) => {
                 if let Some(r) = g.required() {
@@ -205,8 +102,8 @@ impl GameState {
         }
         required.iter().all(|r| self.inventory.contains(&**r))
     }
-    fn complete_action(&mut self, action: &Action) {
-        use Action::*;
+    fn complete_action(&mut self, action: &ActionEntity) {
+        use ActionEntity::*;
         match action {
             ChangeRoom(c) => {
                 if let Some(r) = c.required() {
@@ -239,18 +136,15 @@ impl GameState {
                 if let Some(r) = t.required() {
                     self.inventory.remove(r);
                 }
-                self.enter_room(
-                    self.look_up_room(t.room_name())
-                        .expect("All Rooms should exists in the world!"),
-                );
+                let room = self.lookup_room(t.room_name());
+                self.enter_room(&room);
             }
             Sequence(s) => {
                 if let Some(r) = s.required() {
                     self.inventory.remove(r);
                 }
-                let refs = SequenceRefs::new(s);
                 let action_map = self.world.actions().clone();
-                for id in refs.actions() {
+                for id in s.actions() {
                     let a = action_map
                         .get(id)
                         .expect("All actions should be in the world!");
@@ -261,14 +155,87 @@ impl GameState {
     }
 }
 
+// Game state data already verified in World
+#[allow(clippy::expect_used)]
+impl Database for GameState {
+    fn lookup_action(&self, name: &Identifier) -> Rc<ActionEntity> {
+        self.world
+            .actions()
+            .get(name)
+            .expect("All actions should be loaded.")
+            .clone()
+    }
+    fn lookup_room(&self, name: &Title) -> Rc<RoomEntity> {
+        let variant = self.active_room_variants.get(name).cloned();
+        self.world
+            .rooms()
+            .get(name)
+            .expect("All rooms should be loaded.")
+            .get(&variant)
+            .expect("All room variants should be loaded.")
+            .clone()
+    }
+    fn lookup_dialogue(&self, id: &Identifier) -> Rc<DialogueEntity> {
+        let variants = self
+            .world
+            .dialogues()
+            .get(id)
+            .expect("All dialogue ids should be in the world!");
+        variants
+            .values()
+            .filter_map(|dialogue| {
+                let count = dialogue
+                    .requires()
+                    .iter()
+                    .filter(|req| self.requirement_met(req))
+                    .count();
+                if dialogue.requires().len() != count || count == 0 {
+                    None
+                } else {
+                    Some((count, dialogue))
+                }
+            })
+            .max_by_key(|(k, _)| *k)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| {
+                variants
+                    .get(&None)
+                    .expect("All dialogues should have a default variant")
+            })
+            .clone()
+    }
+    fn lookup_responses(&self, unfiltered: &[Rc<ResponseEntity>]) -> Vec<Rc<ResponseEntity>> {
+        unfiltered
+            .iter()
+            .filter(|response| {
+                response.requires().is_empty()
+                    || response.requires().iter().all(|r| self.requirement_met(r))
+            })
+            .cloned()
+            .collect()
+    }
+    fn enter_room(&mut self, room: &RoomEntity) {
+        self.current_room = room.name().clone();
+    }
+    fn do_action(&mut self, action: &ActionEntity) -> bool {
+        info!("do_action({action:#?})");
+        if self.action_requirement_met(action) {
+            self.complete_action(action);
+            true
+        } else {
+            false
+        }
+    }
+}
+
 // Allowed in tests
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
     use std::rc::Rc;
 
     use asserting::prelude::*;
+    use indexmap::IndexMap;
 
     use crate::config_parser::test_utils::data::{
         action_map, character_map, dialogue_map, item_map, response_map_with_items, room_map,
@@ -278,14 +245,14 @@ mod test {
 
     use super::*;
 
-    fn make_room(name: Title, variant: Option<Identifier>) -> Rc<Room> {
+    fn make_room(name: Title, variant: Option<Identifier>) -> Rc<RoomEntity> {
         Rc::new(
-            Room::builder()
+            RoomEntity::builder()
                 .name(name)
                 .maybe_variant(variant)
                 .description("Test".into())
                 .characters(Vec::new())
-                .exits(HashMap::new())
+                .exits(IndexMap::new())
                 .actions(Vec::new())
                 .build(),
         )
@@ -316,8 +283,8 @@ mod test {
     #[test]
     fn dialogue_responses_returns_only_defaults_when_no_requirements_are_met() {
         let (state, ..) = make_game();
-        let dialogue = state.look_up_dialogue(&i("hello"));
-        let responses = state.dialogue_responses(&dialogue);
+        let dialogue = state.lookup_dialogue(&i("hello"));
+        let responses = state.lookup_responses(dialogue.responses());
         assert_that!(responses).satisfies_with_message("Excludes unexpected responses", |list| {
             list.iter()
                 .all(|r| !r.text().contains("key") && !r.text().contains("ring"))
@@ -332,8 +299,8 @@ mod test {
             items.get(&i("key")).unwrap().clone(),
         ];
         state.inventory.extend(required);
-        let dialogue = state.look_up_dialogue(&i("hello"));
-        let responses = state.dialogue_responses(&dialogue);
+        let dialogue = state.lookup_dialogue(&i("hello"));
+        let responses = state.lookup_responses(dialogue.responses());
         assert_that!(responses.clone())
             .satisfies_with_message("Includes first expected response", |list| {
                 list.iter().any(|r| r.text().contains("ring"))
@@ -349,8 +316,8 @@ mod test {
         let (mut state, items) = make_game();
         let required = items.get(&i("ring")).unwrap().clone();
         state.inventory.insert(required);
-        let dialogue = state.look_up_dialogue(&i("hello"));
-        let responses = state.dialogue_responses(&dialogue);
+        let dialogue = state.lookup_dialogue(&i("hello"));
+        let responses = state.lookup_responses(dialogue.responses());
         assert_that!(responses.clone())
             .satisfies_with_message("Includes expected responses", |list| {
                 list.iter().any(|r| r.text().contains("ring"))
@@ -367,14 +334,14 @@ mod test {
         state
             .active_room_variants
             .insert(t("WoodShed"), i("closed"));
-        let dialogue = state.look_up_dialogue(&dialogue_id);
+        let dialogue = state.lookup_dialogue(&dialogue_id);
         assert_that!(dialogue.text()).contains("Who goes there");
     }
 
     #[test]
     fn look_up_dialogue_falls_back_to_default_variant() {
         let (state, ..) = make_game();
-        let dialogue = state.look_up_dialogue(&i("hello"));
+        let dialogue = state.lookup_dialogue(&i("hello"));
         assert!(dialogue.text().contains("Hiya stranger!"));
     }
 
@@ -382,10 +349,12 @@ mod test {
     fn do_action_change_room() {
         let (mut state, ..) = make_game();
         let id = t("WoodShed");
-        state.current_room = Some(id.clone());
-        assert!(state.current_room().variant().clone().is_none());
+        state.current_room = id.clone();
+        {
+            assert!(state.current_room().variant().clone().is_none());
+        }
         assert_that!(
-            state.do_action(&Action::ChangeRoom(
+            state.do_action(&ActionEntity::ChangeRoom(
                 ChangeRoom::builder()
                     .name(i("close_door"))
                     .description("".into())
@@ -403,12 +372,11 @@ mod test {
             ))
         )
         .is_true();
-        assert_eq!(
-            state.look_up_room(&id).unwrap().variant().clone(),
-            Some(i("closed"))
-        );
-        assert_eq!(state.current_room().name().clone(), id);
-        assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
+        {
+            let current_room = state.current_room();
+            assert_eq!(current_room.name().clone(), id);
+            assert_eq!(current_room.variant().clone(), Some(i("closed")))
+        }
     }
 
     #[test]
@@ -416,10 +384,13 @@ mod test {
         let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
         let id = t("WoodShed");
-        state.current_room = Some(id.clone());
-        assert!(state.current_room().variant().clone().is_none());
+        state.current_room = id.clone();
+        {
+            let current_room = state.current_room();
+            assert!(current_room.variant().clone().is_none());
+        }
         assert_that!(
-            state.do_action(&Action::ChangeRoom(
+            state.do_action(&ActionEntity::ChangeRoom(
                 ChangeRoom::builder()
                     .name(i("close_door"))
                     .description("".into())
@@ -438,21 +409,26 @@ mod test {
             ))
         )
         .is_false();
-        assert_eq!(state.look_up_room(&id).unwrap().variant().clone(), None);
-        assert_eq!(state.current_room().name().clone(), id);
-        assert_eq!(state.current_room().variant().clone(), None)
+        {
+            let current_room = state.current_room();
+            assert_eq!(current_room.name().clone(), id);
+            assert_eq!(current_room.variant().clone(), None);
+        }
     }
 
     #[test]
-    fn do_action_change_room_with_requirements_nmet() {
+    fn do_action_change_room_with_requirements_met() {
         let (mut state, items, ..) = make_game();
         let item = items.get(&i("lever")).unwrap().clone();
         state.inventory.insert(item.clone());
         let id = t("WoodShed");
-        state.current_room = Some(id.clone());
-        assert!(state.current_room().variant().clone().is_none());
+        state.current_room = id.clone();
+        {
+            let current_room = state.current_room();
+            assert!(current_room.variant().clone().is_none());
+        }
         assert_that!(
-            state.do_action(&Action::ChangeRoom(
+            state.do_action(&ActionEntity::ChangeRoom(
                 ChangeRoom::builder()
                     .name(i("close_door"))
                     .description("".into())
@@ -471,17 +447,20 @@ mod test {
             ))
         )
         .is_true();
-        assert_eq!(state.current_room().name().clone(), id);
-        assert_eq!(state.current_room().variant().clone(), Some(i("closed")))
+        {
+            let current_room = state.current_room();
+            assert_eq!(current_room.name().clone(), id);
+            assert_eq!(current_room.variant().clone(), Some(i("closed")));
+        }
     }
 
     #[test]
     fn do_action_teleport() {
         let (mut state, ..) = make_game();
         let id = t("Field");
-        state.current_room = Some(t("WoodShed"));
+        state.current_room = t("WoodShed");
         assert_that!(
-            state.do_action(&Action::Teleport(
+            state.do_action(&ActionEntity::Teleport(
                 Teleport::builder()
                     .name(i("beam_me_up"))
                     .description(
@@ -493,7 +472,10 @@ mod test {
             ))
         )
         .is_true();
-        assert_eq!(state.current_room().name().clone(), id);
+        {
+            let current_room = state.current_room();
+            assert_eq!(current_room.name().clone(), id);
+        }
     }
 
     #[test]

@@ -1,5 +1,5 @@
 // Allowed in Tests
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::core::{Identifier, Title};
 
@@ -12,30 +12,96 @@ pub fn i(s: &str) -> Identifier {
 }
 
 pub mod data {
+    use indexmap::IndexMap;
+
     use super::*;
     use std::{collections::HashMap, rc::Rc};
 
     use crate::{
         config_parser::types::{CharacterMap, ItemMap, ResponseMap},
         core::{
-            Action, ActionMap, ChangeRoom, Character, Dialogue, DialogueMap, GiveItem, Item,
-            ReplaceItem, Requirement, Response, Room, RoomMap, Sequence, TakeItem,
+            ActionEntity, ActionMap, ChangeRoom, CharacterEntity, DialogueEntity, DialogueMap,
+            GiveItem, Item, ReplaceItem, Requirement, ResponseEntity, RoomEntity, RoomMap,
+            Sequence, TakeItem,
         },
     };
+
+    pub trait TakeClone<T> {
+        fn take(&self, k: &str) -> &Rc<T>;
+        fn take_clone(&self, k: &str) -> Rc<T> {
+            self.take(k).clone()
+        }
+    }
+    pub trait TakeCloneVariant<T> {
+        fn take(&self, n: &str, v: Option<&str>) -> &Rc<T>;
+        fn take_clone(&self, n: &str, v: Option<&str>) -> Rc<T> {
+            self.take(n, v).clone()
+        }
+    }
+
+    impl TakeClone<Item> for ItemMap {
+        fn take(&self, k: &str) -> &Rc<Item> {
+            self.get(&i(k)).expect("mock data should be present")
+        }
+    }
+    impl TakeClone<CharacterEntity> for CharacterMap {
+        fn take(&self, k: &str) -> &Rc<CharacterEntity> {
+            self.get(&t(k)).expect("mock data should be present")
+        }
+    }
+    impl TakeCloneVariant<RoomEntity> for RoomMap {
+        fn take(&self, n: &str, v: Option<&str>) -> &Rc<RoomEntity> {
+            self.get(&t(n))
+                .and_then(|m| m.get(&v.map(i)))
+                .expect("mock data should be present")
+        }
+    }
+    impl TakeCloneVariant<DialogueEntity> for DialogueMap {
+        fn take(&self, n: &str, v: Option<&str>) -> &Rc<DialogueEntity> {
+            self.get(&i(n))
+                .and_then(|m| m.get(&v.map(i)))
+                .expect("mock data should be present")
+        }
+    }
+    impl TakeClone<ResponseEntity> for ResponseMap {
+        fn take(&self, k: &str) -> &Rc<ResponseEntity> {
+            self.get(&i(k)).expect("mock data should be present")
+        }
+    }
+    impl TakeClone<ActionEntity> for ActionMap {
+        fn take(&self, k: &str) -> &Rc<ActionEntity> {
+            self.get(&i(k)).expect("mock data should be present")
+        }
+    }
 
     pub fn character_map() -> CharacterMap {
         CharacterMap::from([
             (
                 t("NeighborFrank"),
-                Rc::new(Character::new(t("NeighborFrank"), i("hello"))),
+                Rc::new(
+                    CharacterEntity::builder()
+                        .name(t("NeighborFrank"))
+                        .start_dialogue(i("hello"))
+                        .build(),
+                ),
             ),
             (
                 t("CuriousCalvin"),
-                Rc::new(Character::new(t("CuriousCalvin"), i("curious"))),
+                Rc::new(
+                    CharacterEntity::builder()
+                        .name(t("CuriousCalvin"))
+                        .start_dialogue(i("curious"))
+                        .build(),
+                ),
             ),
             (
                 t("BlueBird"),
-                Rc::new(Character::new(t("BlueBird"), i("chirp"))),
+                Rc::new(
+                    CharacterEntity::builder()
+                        .name(t("BlueBird"))
+                        .start_dialogue(i("chirp"))
+                        .build(),
+                ),
             ),
         ])
     }
@@ -45,7 +111,7 @@ pub mod data {
             (
                 i("goodbye"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Goodbye.".into())
                         .requires(vec![])
                         .build(),
@@ -54,7 +120,7 @@ pub mod data {
             (
                 i("hello"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Hello!".into())
                         .requires(vec![])
                         .build(),
@@ -63,7 +129,7 @@ pub mod data {
             (
                 i("im_sorry"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("No, I don't I do...".into())
                         .requires(vec![])
                         .build(),
@@ -72,7 +138,7 @@ pub mod data {
             (
                 i("sure"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Well, one drink couldn't hurt!".into())
                         .requires(vec![])
                         .triggers(action_map.get(&i("robbed")).unwrap().clone())
@@ -82,7 +148,7 @@ pub mod data {
             (
                 i("you_have_it"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("You found the ring!".into())
                         .requires(vec![Requirement::HasItem(
                             item_map.get(&i("ring")).unwrap().clone(),
@@ -93,7 +159,7 @@ pub mod data {
             (
                 i("you_have_both"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("You found the ring and the key!".into())
                         .requires(vec![
                             Requirement::HasItem(item_map.get(&i("ring")).unwrap().clone()),
@@ -110,7 +176,7 @@ pub mod data {
             (
                 i("goodbye"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Goodbye.".into())
                         .requires(vec![])
                         .build(),
@@ -119,7 +185,7 @@ pub mod data {
             (
                 i("hello"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Hello!".into())
                         .requires(vec![])
                         .build(),
@@ -128,7 +194,7 @@ pub mod data {
             (
                 i("im_sorry"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("No, I don't I do...".into())
                         .requires(vec![])
                         .build(),
@@ -137,7 +203,7 @@ pub mod data {
             (
                 i("sure"),
                 Rc::new(
-                    Response::builder()
+                    ResponseEntity::builder()
                         .text("Well, one drink couldn't hurt!".into())
                         .requires(vec![])
                         .triggers(action_map.get(&i("robbed")).unwrap().clone())
@@ -182,11 +248,11 @@ pub mod data {
 
     pub fn room_map(with_actions: bool) -> RoomMap {
         let woodshed = Rc::new(
-            Room::builder()
+            RoomEntity::builder()
                 .name(t("WoodShed"))
                 .description("A dusty shed full of tools, lumber, and a giant table saw.".into())
                 .characters(vec![])
-                .exits(HashMap::from([(i("north"), "Field".parse().unwrap())]))
+                .exits(IndexMap::from([(i("north"), "Field".parse().unwrap())]))
                 .actions(if with_actions {
                     vec![i("pull_lever")]
                 } else {
@@ -195,12 +261,12 @@ pub mod data {
                 .build(),
         );
         let woodshed_closed = Rc::new(
-            Room::builder()
+            RoomEntity::builder()
                 .name(t("WoodShed"))
                 .variant(i("closed"))
                 .description("Its really dark and dusty in here.".into())
                 .characters(vec![])
-                .exits(HashMap::from([(
+                .exits(IndexMap::from([(
                     "north".parse().unwrap(),
                     "Field".parse().unwrap(),
                 )]))
@@ -208,11 +274,11 @@ pub mod data {
                 .build(),
         );
         let field = Rc::new(
-            Room::builder()
+            RoomEntity::builder()
                 .name(t("Field"))
                 .description("A wide open grassy field.".into())
                 .characters(vec![])
-                .exits(HashMap::from([(
+                .exits(IndexMap::from([(
                     "north".parse().unwrap(),
                     "Field".parse().unwrap(),
                 )]))
@@ -221,23 +287,17 @@ pub mod data {
         );
         RoomMap::from([
             (
-                woodshed.name().clone(),
-                HashMap::from([
-                    (woodshed.variant().clone(), woodshed),
-                    (woodshed_closed.variant().clone(), woodshed_closed),
-                ]),
+                t("WoodShed"),
+                HashMap::from([(None, woodshed), (Some(i("closed")), woodshed_closed)]),
             ),
-            (
-                field.name().clone(),
-                HashMap::from([(field.variant().clone(), field)]),
-            ),
+            (t("Field"), HashMap::from([(None, field)])),
         ])
     }
 
     pub fn action_map(room_map: &RoomMap, item_map: &ItemMap) -> ActionMap {
         ActionMap::from([(
             i("open_chest"),
-            Rc::new(Action::TakeItem(
+            Rc::new(ActionEntity::TakeItem(
                 TakeItem::builder()
                     .name(i("open_chest"))
                     .description("You carefully open the chest with an intense curiosity!".into())
@@ -249,7 +309,7 @@ pub mod data {
             )),
         ), (
             i("look_closer"),
-            Rc::new(Action::ReplaceItem(
+            Rc::new(ActionEntity::ReplaceItem(
                 ReplaceItem::builder()
                     .name(i("look_closer"))
                     .description("You lean in to see what's inside the vase. Then out of no where a monkey snatches your apple knocking you over. You tumble into the bookshelf, only for the key to fall right into your hands!".into())
@@ -260,7 +320,7 @@ pub mod data {
         ), (
             i("robbed"),
             Rc::new(
-                Action::GiveItem(
+                ActionEntity::GiveItem(
                     GiveItem::builder()
                         .name(i("robbed"))
                         .description("You wake up groggy laying in vomit. You pat youself down only to notice that your ring is missing!".into())
@@ -271,7 +331,7 @@ pub mod data {
         ), (
             i("pull_lever"),
             Rc::new(
-                Action::ChangeRoom(
+                ActionEntity::ChangeRoom(
                     ChangeRoom::builder()
                         .name(i("pull_lever"))
                         .description("You insert the lever into the slot and pull it back. Two hefty ropes snap and the barn doors slam shut! It's dark in here!".into())
@@ -283,7 +343,7 @@ pub mod data {
         ), (
             i("open_door"),
             Rc::new(
-                Action::ChangeRoom(
+                ActionEntity::ChangeRoom(
                     ChangeRoom::builder()
                         .name(i("open_door"))
                         .description("The door bursts open".into())
@@ -294,7 +354,7 @@ pub mod data {
         ), (
             i("multiple"),
             Rc::new(
-                Action::Sequence(
+                ActionEntity::Sequence(
                     Sequence::builder()
                     .name(i("multiple"))
                     .description("Multiple things happen".into())
@@ -326,7 +386,7 @@ pub mod data {
                     (
                         None,
                         Rc::new(
-                            Dialogue::builder()
+                            DialogueEntity::builder()
                                 .text("Hiya stranger!".into())
                                 .responses(hello_responses)
                                 .requires(vec![])
@@ -336,7 +396,7 @@ pub mod data {
                     (
                         Some(i("scared")),
                         Rc::new(
-                            Dialogue::builder()
+                            DialogueEntity::builder()
                                 .text("Who goes there? I can't see ya, but I can smell ya!".into())
                                 .responses(vec![])
                                 .requires(vec![Requirement::RoomVariant(room_map.get(&t("WoodShed")).unwrap().get(&Some(i("closed"))).unwrap().clone())])
@@ -346,7 +406,7 @@ pub mod data {
                     (
                         Some(i("relieved")),
                         Rc::new(
-                            Dialogue::builder()
+                            DialogueEntity::builder()
                                 .text("Whew! Thank you buddy! I was scared for a second! I think they way out is this way!".into())
                                 .responses(vec![])
                                 .requires(vec![
@@ -364,7 +424,7 @@ pub mod data {
                 HashMap::from([(
                     None,
                     Rc::new(
-                        Dialogue::builder()
+                        DialogueEntity::builder()
                             .text("Hey, I remember you from somewhere -long pause- yeah, I we used to be neighbors! Remember the guy with the loud drunk guy who was always screaming at kids?".into())
                             .responses(vec![
                                 response_map.get(&i("im_sorry")).unwrap().clone(),
@@ -381,7 +441,7 @@ pub mod data {
                 HashMap::from([(
                     None,
                     Rc::new(
-                        Dialogue::builder()
+                        DialogueEntity::builder()
                             .text("Don't worry buddy! We all forget things. Hey, how about a drink for old times sake?".into())
                             .responses(vec![
                                 response_map.get(&i("sure")).unwrap().clone(),
@@ -398,7 +458,7 @@ pub mod data {
                 HashMap::from([(
                     None,
                     Rc::new(
-                        Dialogue::builder()
+                        DialogueEntity::builder()
                             .text("The bird chatters melodiously; chirp, chirp!".into())
                             .responses(vec![
                             ])

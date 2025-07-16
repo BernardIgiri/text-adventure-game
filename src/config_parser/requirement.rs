@@ -121,8 +121,8 @@ mod test {
         config_parser::{
             iter::{EntitySection, SectionRecordIter},
             test_utils::{
-                data::{item_map, room_map},
-                i, t,
+                data::{TakeCloneVariant, item_map, room_map},
+                i,
             },
         },
         core::Requirement,
@@ -194,16 +194,9 @@ mod test {
         let record = make_record(&mut ini, &[("requires", "room_variant:WoodShed|closed")]);
 
         let result = parse_requirements(&record, &items, &rooms).unwrap();
-        assert_that!(&result).has_length(1);
-
-        let r: &Requirement = &result[0];
-        match &r {
-            Requirement::RoomVariant(room) => {
-                assert_eq!(room.name(), &t("WoodShed"));
-                assert_eq!(room.variant(), &Some(i("closed")));
-            }
-            _ => panic!("Expected RoomVariant requirement"),
-        }
+        assert_that!(result).contains_exactly([Requirement::RoomVariant(
+            rooms.take_clone("WoodShed", Some("closed")),
+        )]);
     }
 
     #[test]
@@ -215,16 +208,8 @@ mod test {
         let record = make_record(&mut ini, &[("requires", "room_variant:WoodShed")]);
 
         let result = parse_requirements(&record, &items, &rooms).unwrap();
-        assert_that!(&result).has_length(1);
-
-        let r: &Requirement = &result[0];
-        match &r {
-            Requirement::RoomVariant(room) => {
-                assert_eq!(room.name(), &t("WoodShed"));
-                assert_eq!(room.variant(), &None);
-            }
-            _ => panic!("Expected RoomVariant requirement"),
-        }
+        assert_that!(result)
+            .contains_exactly([Requirement::RoomVariant(rooms.take_clone("WoodShed", None))]);
     }
 
     #[test]

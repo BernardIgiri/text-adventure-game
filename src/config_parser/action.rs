@@ -8,8 +8,8 @@ use crate::{
         types::RoomVariant,
     },
     core::{
-        Action, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, Sequence, TakeItem, Teleport,
-        Title,
+        ActionEntity, ChangeRoom, GiveItem, Identifier, Item, ReplaceItem, Sequence, TakeItem,
+        Teleport, Title,
     },
     error,
 };
@@ -19,7 +19,7 @@ use super::{
     types::{ActionMap, ItemMap, RoomMap},
 };
 
-type ActionResult = Result<Option<(Identifier, Action)>, error::Application>;
+type ActionResult = Result<Option<(Identifier, ActionEntity)>, error::Application>;
 
 pub fn parse_actions<'a>(
     ini_iter: SectionIter<'a>,
@@ -96,7 +96,7 @@ fn next_change_room_action(
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::ChangeRoom(
+        ActionEntity::ChangeRoom(
             ChangeRoom::builder()
                 .name(name)
                 .description(description.into())
@@ -115,7 +115,7 @@ fn next_teleport_action(record: UnverifiedRecord, item_map: &ItemMap) -> ActionR
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::Teleport(
+        ActionEntity::Teleport(
             Teleport::builder()
                 .name(name)
                 .description(description.into())
@@ -134,7 +134,7 @@ fn next_give_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> Action
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::GiveItem(
+        ActionEntity::GiveItem(
             GiveItem::builder()
                 .name(name)
                 .description(description.into())
@@ -152,7 +152,7 @@ fn next_take_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> Action
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::TakeItem(
+        ActionEntity::TakeItem(
             TakeItem::builder()
                 .name(name)
                 .description(description.into())
@@ -186,7 +186,7 @@ fn next_replace_item_action(record: UnverifiedRecord, item_map: &ItemMap) -> Act
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::ReplaceItem(
+        ActionEntity::ReplaceItem(
             ReplaceItem::builder()
                 .name(name)
                 .description(description.into())
@@ -213,7 +213,7 @@ fn next_sequence_action(record: UnverifiedRecord, item_map: &ItemMap) -> ActionR
     let name = record.parse_name::<Identifier>()?;
     Ok(Some((
         name.clone(),
-        Action::Sequence(
+        ActionEntity::Sequence(
             Sequence::builder()
                 .name(name)
                 .description(description.into())
@@ -274,40 +274,40 @@ fn require_item_from_map(
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod test {
+    use std::ops::Deref;
+
     use asserting::prelude::*;
     use ini::Ini;
+    use pretty_assertions::assert_eq;
 
-    use crate::{
-        config_parser::test_utils::{
-            data::{item_map, room_map},
-            i, t,
-        },
-        core::Action,
+    use crate::config_parser::test_utils::{
+        data::{TakeClone, TakeCloneVariant, item_map, room_map},
+        i, t,
     };
 
-    use super::parse_actions;
+    use super::*;
 
     const GOOD_DATA: &str = r"
         [Action:pull_lever]
         change_room=WoodShed->closed
-        description=You pull the hefty lever and hear a sastifying clunk! Immediately, the lights go out, and lever seizes in place!
+        description=Description a.
 
         [Action:pay_bribe]
         take_item=silver_coin
-        description=You give away your last coin begrudgingly.
+        description=Description b.
 
         [Action:unlock_chest]
         replace_item=key->ring
-        description=You unlock the chest and discover a golden ring!
+        description=Description c.
 
         [Action:pickup_key]
         give_item=key
-        description=You pick up the dingy key on the floor.
+        description=Description d.
         
         [Action:beam_me_up]
         teleport_to=Enterprise
         required=silver_coin
-        description=Scotty teleports you abord the ship!
+        description=Description e.
     ";
 
     #[test]
@@ -325,50 +325,56 @@ mod test {
             .contains_key(i("pickup_key"))
             .contains_key(i("beam_me_up"));
 
-        let pull_lever = actions.get(&i("pull_lever")).unwrap();
-        assert_that!(pull_lever).satisfies_with_message("expected ChangeRoom", |a| {
-            matches!(a.as_ref(), Action::ChangeRoom(a)
-                if a.description().contains("hefty lever")
-                && a.room().name() == &t("WoodShed")
-                && a.room().variant() == &Some(i("closed"))
-            )
-        });
+        let result = actions.take("pull_lever");
+        let expected = ActionEntity::ChangeRoom(
+            ChangeRoom::builder()
+                .name(i("pull_lever"))
+                .description("Description a.".into())
+                .room(rooms.take_clone("WoodShed", Some("closed")))
+                .build(),
+        );
+        assert_eq!(result.deref(), &expected);
 
-        let pay_bribe = actions.get(&i("pay_bribe")).unwrap();
-        assert_that!(pay_bribe).satisfies_with_message("expected GiveItem", |a| {
-            matches!(a.as_ref(), Action::TakeItem(a)
-                if a.description().contains("begrudgingly")
-                && a.items().len() == 1
-                && a.items()[0].name() == &i("silver_coin")
-            )
-        });
+        let result = actions.take("pay_bribe");
+        let expected = ActionEntity::TakeItem(
+            TakeItem::builder()
+                .name(i("pay_bribe"))
+                .description("Description b.".into())
+                .items(vec![items.take_clone("silver_coin")])
+                .build(),
+        );
+        assert_eq!(result.deref(), &expected);
 
-        let unlock_chest = actions.get(&i("unlock_chest")).unwrap();
-        assert_that!(unlock_chest).satisfies_with_message("expected ReplaceItem", |a| {
-            matches!(a.as_ref(), Action::ReplaceItem(a)
-                if a.description().contains("golden ring")
-                && a.original().name() == &i("key")
-                && a.replacement().name() == &i("ring")
-            )
-        });
+        let result = actions.take("unlock_chest");
+        let expected = ActionEntity::ReplaceItem(
+            ReplaceItem::builder()
+                .name(i("unlock_chest"))
+                .description("Description c.".into())
+                .original(items.take_clone("key"))
+                .replacement(items.take_clone("ring"))
+                .build(),
+        );
+        assert_eq!(result.deref(), &expected);
 
-        let pickup_key = actions.get(&i("pickup_key")).unwrap();
-        assert_that!(pickup_key).satisfies_with_message("expected TakeItem", |a| {
-            matches!(a.as_ref(), Action::GiveItem(a)
-                if a.description().contains("dingy key")
-                && a.required().is_none()
-                && a.items().len() == 1
-                && a.items()[0].name() == &i("key")
-            )
-        });
+        let result = actions.take("pickup_key");
+        let expected = ActionEntity::GiveItem(
+            GiveItem::builder()
+                .name(i("pickup_key"))
+                .description("Description d.".into())
+                .items(vec![items.take_clone("key")])
+                .build(),
+        );
+        assert_eq!(result.deref(), &expected);
 
-        let teleport = actions.get(&i("beam_me_up")).unwrap();
-        assert_that!(teleport).satisfies_with_message("expected Teleport", |a| {
-            matches!(a.as_ref(), Action::Teleport(tp)
-                if tp.description().contains("teleports you")
-                && tp.required().as_ref().map(|i| i.name()) == Some(&i("silver_coin"))
-                && tp.room_name().clone() == t("Enterprise")
-            )
-        });
+        let result = actions.take("beam_me_up");
+        let expected = ActionEntity::Teleport(
+            Teleport::builder()
+                .name(i("beam_me_up"))
+                .description("Description e.".into())
+                .room_name(t("Enterprise"))
+                .required(items.take_clone("silver_coin"))
+                .build(),
+        );
+        assert_eq!(result.deref(), &expected);
     }
 }

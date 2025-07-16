@@ -3,7 +3,7 @@ use std::rc::Rc;
 use ini::SectionIter;
 
 use crate::{
-    core::{Dialogue, Response},
+    core::{DialogueEntity, ResponseEntity},
     error,
 };
 
@@ -38,10 +38,10 @@ pub fn parse_dialogues(
                     })?
                     .clone())
             })
-            .collect::<Result<Vec<Rc<Response>>, error::Application>>()?;
+            .collect::<Result<Vec<Rc<ResponseEntity>>, error::Application>>()?;
         let requires = parse_requirements(&record, item_map, room_map)?;
         let dialogue = Rc::new(
-            Dialogue::builder()
+            DialogueEntity::builder()
                 .text(text.into())
                 .responses(responses)
                 .requires(requires)
@@ -59,12 +59,14 @@ pub fn parse_dialogues(
 #[cfg(test)]
 mod test {
 
+    use std::ops::Deref;
+
     use ini::Ini;
 
     use crate::{
         config_parser::test_utils::{
-            data::{action_map, item_map, response_map, room_map},
-            i, t,
+            data::{TakeClone, TakeCloneVariant, action_map, item_map, response_map, room_map},
+            i,
         },
         core::Requirement,
     };
@@ -118,46 +120,54 @@ mod test {
         let actions = action_map(&rooms, &items);
         let responses = response_map(&actions);
         let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms).unwrap();
+
         assert_that!(&dialogues)
             .has_length(3)
             .contains_key(i("farmer_greeting"))
             .contains_key(i("cow_emote"));
-        let happy = dialogues
-            .get(&i("farmer_greeting"))
-            .unwrap()
-            .get(&None)
-            .unwrap();
-        let scared = dialogues
-            .get(&i("farmer_greeting"))
-            .unwrap()
-            .get(&Some(i("scared")))
-            .unwrap();
-        let moo = dialogues.get(&i("cow_emote")).unwrap().get(&None).unwrap();
-        let robery = dialogues.get(&i("robery")).unwrap().get(&None).unwrap();
-        assert_eq!(moo.text(), &"Moo!".to_string());
 
-        assert_eq!(robery.text(), &"Empty your pockets kid!".to_string());
-        assert_that!(robery.requires()).has_length(3);
+        let result = dialogues.take("cow_emote", None);
+        let expected = DialogueEntity::builder()
+            .text("Moo!".into())
+            .responses(vec![])
+            .requires(vec![])
+            .build();
+        assert_eq!(result.deref(), &expected);
 
-        assert_eq!(scared.text(), &"Hey, is somebody there?".to_string());
-        assert_that!(scared.requires()).has_length(1);
-        assert_that!(scared.requires().first().unwrap()).satisfies_with_message(
-            "expected RoomVariant",
-            |r| {
-                matches!(**r, Requirement::RoomVariant(ref rv)
-                if rv.name() == &t("WoodShed") && rv.variant().clone().unwrap() == i("closed"))
-            },
-        );
+        let result = dialogues.take("robery", None);
+        let expected = DialogueEntity::builder()
+            .text("Empty your pockets kid!".into())
+            .responses(vec![])
+            .requires(vec![
+                Requirement::HasItem(items.take_clone("ring")),
+                Requirement::HasItem(items.take_clone("key")),
+                Requirement::RoomVariant(rooms.take_clone("WoodShed", Some("closed"))),
+            ])
+            .build();
+        assert_eq!(result.deref(), &expected);
 
-        assert_that!(happy.requires()).has_length(1);
-        assert_eq!(happy.text(), &"Howdy there stranger!".to_string());
-        assert_that!(happy.requires().first().unwrap()).satisfies_with_message(
-            "expected RoomVariant",
-            |r| {
-                matches!(**r, Requirement::RoomVariant(ref rv)
-                if rv.name() == &t("WoodShed") && rv.variant().is_none())
-            },
-        );
+        let result = dialogues.take("farmer_greeting", Some("scared"));
+        let expected = DialogueEntity::builder()
+            .text("Hey, is somebody there?".into())
+            .responses(vec![])
+            .requires(vec![Requirement::RoomVariant(
+                rooms.take_clone("WoodShed", Some("closed")),
+            )])
+            .build();
+        assert_eq!(result.deref(), &expected);
+
+        let result = dialogues.take("farmer_greeting", None);
+        let expected = DialogueEntity::builder()
+            .text("Howdy there stranger!".into())
+            .responses(vec![
+                responses.take_clone("hello"),
+                responses.take_clone("goodbye"),
+            ])
+            .requires(vec![Requirement::RoomVariant(
+                rooms.take_clone("WoodShed", None),
+            )])
+            .build();
+        assert_eq!(result.deref(), &expected);
     }
 
     #[test]

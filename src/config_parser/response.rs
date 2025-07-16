@@ -7,7 +7,7 @@ use crate::{
         iter::{EntitySection, SectionRecordIter},
         requirement::parse_requirements,
     },
-    core::{Identifier, Response},
+    core::{Identifier, ResponseEntity},
     error,
 };
 
@@ -44,7 +44,7 @@ pub fn parse_responses<'a>(
         };
         let requires = parse_requirements(&record, item_map, room_map)?;
         let response = Rc::new(
-            Response::builder()
+            ResponseEntity::builder()
                 .text(text.into())
                 .maybe_leads_to(leads_to)
                 .maybe_triggers(action)

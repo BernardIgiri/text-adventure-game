@@ -5,9 +5,9 @@ use derive_getters::Getters;
 use derive_new::new;
 
 use super::{
+    Database, Title,
     invariant::Identifier,
-    room::{Item, Room},
-    Title,
+    room::{Item, RoomEntity},
 };
 
 macro_rules! define_action {
@@ -33,10 +33,9 @@ macro_rules! define_action {
         }
     };
 }
-
 define_action!(ChangeRoom {
     required: Option<Rc<Item>>,
-    room: Rc<Room>,
+    room: Rc<RoomEntity>,
 });
 
 define_action!(ReplaceItem {
@@ -60,12 +59,11 @@ define_action!(Teleport {
 
 define_action!(Sequence {
     required: Option<Rc<Item>>,
-    #[getter(skip)]
     actions: Vec<Identifier>,
 });
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Action {
+pub enum ActionEntity {
     ChangeRoom(ChangeRoom),
     GiveItem(GiveItem),
     ReplaceItem(ReplaceItem),
@@ -74,34 +72,79 @@ pub enum Action {
     Sequence(Sequence),
 }
 
-impl Action {
-    pub fn name(&self) -> &Identifier {
-        match &self {
-            Self::ChangeRoom(change_room) => change_room.name(),
-            Self::GiveItem(give_item) => give_item.name(),
-            Self::ReplaceItem(replace_item) => replace_item.name(),
-            Self::TakeItem(take_item) => take_item.name(),
-            Self::Teleport(teleport) => teleport.name(),
-            Self::Sequence(chain) => chain.name(),
-        }
+#[derive(new, Clone, Debug, PartialEq, Eq)]
+pub struct ActionHandle(Rc<ActionEntity>);
+impl ActionHandle {
+    pub fn into_proxy(self) -> Action {
+        self.into()
     }
-    pub fn description(&self) -> &String {
-        match &self {
-            Self::ChangeRoom(change_room) => change_room.description(),
-            Self::GiveItem(give_item) => give_item.description(),
-            Self::ReplaceItem(replace_item) => replace_item.description(),
-            Self::TakeItem(take_item) => take_item.description(),
-            Self::Teleport(teleport) => teleport.description(),
-            Self::Sequence(chain) => chain.description(),
-        }
+}
+impl From<Rc<ActionEntity>> for ActionHandle {
+    fn from(value: Rc<ActionEntity>) -> Self {
+        Self::new(value)
+    }
+}
+impl From<&Rc<ActionEntity>> for ActionHandle {
+    fn from(value: &Rc<ActionEntity>) -> Self {
+        Self::new(value.clone())
     }
 }
 
 #[derive(new)]
-pub struct SequenceRefs<'a>(&'a Sequence);
-
-impl<'a> SequenceRefs<'a> {
-    pub const fn actions(&self) -> &Vec<Identifier> {
-        &self.0.actions
+pub struct Action {
+    handle: ActionHandle,
+}
+impl From<Action> for ActionHandle {
+    fn from(proxy: Action) -> Self {
+        proxy.handle
+    }
+}
+impl From<ActionHandle> for Action {
+    fn from(value: ActionHandle) -> Self {
+        Self::new(value)
+    }
+}
+impl From<&Rc<ActionEntity>> for Action {
+    fn from(value: &Rc<ActionEntity>) -> Self {
+        Self::new(value.into())
+    }
+}
+impl From<Rc<ActionEntity>> for Action {
+    fn from(value: Rc<ActionEntity>) -> Self {
+        Self::new(value.into())
+    }
+}
+impl Action {
+    pub fn name(&self) -> &Identifier {
+        use ActionEntity as A;
+        match &*self.handle.0 {
+            A::ChangeRoom(change_room) => &change_room.name,
+            A::GiveItem(give_item) => &give_item.name,
+            A::ReplaceItem(replace_item) => &replace_item.name,
+            A::TakeItem(take_item) => &take_item.name,
+            A::Teleport(teleport) => &teleport.name,
+            A::Sequence(chain) => &chain.name,
+        }
+    }
+    pub fn description(&self) -> &String {
+        use ActionEntity as A;
+        match &*self.handle.0 {
+            A::ChangeRoom(change_room) => &change_room.description,
+            A::GiveItem(give_item) => &give_item.description,
+            A::ReplaceItem(replace_item) => &replace_item.description,
+            A::TakeItem(take_item) => &take_item.description,
+            A::Teleport(teleport) => &teleport.description,
+            A::Sequence(chain) => &chain.description,
+        }
+    }
+    pub fn do_it<'b, T: Database>(&'b self, db: &'b mut T) -> bool {
+        db.do_action(&self.handle.0)
+    }
+    #[allow(dead_code)]
+    pub fn into_handle(self) -> ActionHandle {
+        self.into()
+    }
+    pub fn handle_clone(&self) -> ActionHandle {
+        self.handle.clone()
     }
 }

@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use ini::SectionIter;
 
-use crate::{core::Character, error};
+use crate::{
+    core::{CharacterEntity, Title},
+    error,
+};
 
 use super::{
     iter::{EntitySection, SectionRecordIter},
@@ -13,18 +16,15 @@ pub fn parse_characters(ini_iter: SectionIter) -> Result<CharacterMap, error::Ap
     let mut map = CharacterMap::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Character) {
         let record = record?.into_record(&["start_dialogue"], &[])?;
-        let start_dialogue = record.require("start_dialogue")?;
-        let character = Rc::new(Character::new(
-            record.parse_name()?,
-            start_dialogue
-                .parse()
-                .map_err(|source| error::ConversionFailed {
-                    etype: "Character",
-                    property: "start_dialogue",
-                    source,
-                })?,
-        ));
-        map.insert(character.name().clone(), character);
+        let start_dialogue = record.require_parsed("start_dialogue")?;
+        let name = record.parse_name::<Title>()?;
+        let character = Rc::new(
+            CharacterEntity::builder()
+                .name(name.clone())
+                .start_dialogue(start_dialogue)
+                .build(),
+        );
+        map.insert(name, character);
     }
     Ok(map)
 }
@@ -33,7 +33,11 @@ pub fn parse_characters(ini_iter: SectionIter) -> Result<CharacterMap, error::Ap
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod test {
+    use std::ops::Deref;
+
     use ini::Ini;
+
+    use crate::config_parser::test_utils::{data::TakeClone, i, t};
 
     use super::*;
     use asserting::prelude::*;
@@ -61,8 +65,12 @@ mod test {
         let characters = parse_characters(ini.iter()).unwrap();
         assert_eq!(characters.len(), 3);
 
-        let c = characters.get(&"OldMan".parse().unwrap()).unwrap();
-        assert_eq!(c.name().to_string().as_str(), "Old Man");
+        let result = characters.take("OldMan");
+        let expected = CharacterEntity::builder()
+            .name(t("OldMan"))
+            .start_dialogue(i("greeting_old_man"))
+            .build();
+        assert_eq!(result.deref(), &expected);
 
         assert!(characters.contains_key(&"Merchant".parse().unwrap()));
         assert!(characters.contains_key(&"Guard".parse().unwrap()));

@@ -19,6 +19,7 @@ cursive = "0.21.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 csscolorparser = "0.7.2"
+indexmap = "2.10.0"
 
 [dev-dependencies]
 asserting = "0.8.0"

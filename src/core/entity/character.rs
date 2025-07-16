@@ -1,70 +1,69 @@
+use derive_getters::Getters;
 use std::rc::Rc;
 
 use bon::Builder;
-use derive_getters::Getters;
 use derive_new::new;
 
+use crate::proxied_entity;
+
 use super::{
-    action::Action,
+    Action, Database, Item, RoomEntity, ToProxy,
+    action::ActionEntity,
     invariant::{Identifier, Title},
-    room::Room,
-    Item,
 };
-
-#[derive(Getters, new, Debug, PartialEq, Eq)]
-pub struct Character {
-    name: Title,
-    #[getter(skip)]
-    start_dialogue: Identifier,
-}
-
-#[derive(new)]
-pub struct CharacterRefs<'a>(&'a Character);
-
-impl<'a> CharacterRefs<'a> {
-    pub const fn start_dialogue(&self) -> &Identifier {
-        &self.0.start_dialogue
-    }
-}
-
-#[derive(Getters, Builder, Debug, PartialEq, Eq)]
-pub struct Dialogue {
-    text: String,
-    #[getter(skip)]
-    responses: Vec<Rc<Response>>,
-    requires: Vec<Requirement>,
-}
-
-#[derive(new)]
-pub struct DialogueRefs<'a>(&'a Dialogue);
-
-impl<'a> DialogueRefs<'a> {
-    pub const fn responses(&self) -> &Vec<Rc<Response>> {
-        &self.0.responses
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Requirement {
     HasItem(Rc<Item>),
-    RoomVariant(Rc<Room>),
+    RoomVariant(Rc<RoomEntity>),
     DoesNotHave(Rc<Item>),
 }
 
-#[derive(Getters, Builder, Debug, PartialEq, Eq)]
-pub struct Response {
+proxied_entity!(Character, CharacterEntity, CharacterHandle {
+    name: Title,
+}, {
+    start_dialogue: Identifier,
+});
+
+proxied_entity!(Dialogue, DialogueEntity, DialogueHandle {
     text: String,
-    #[getter(skip)]
-    leads_to: Option<Identifier>,
-    triggers: Option<Rc<Action>>,
+}, {
+    responses: Vec<Rc<ResponseEntity>>,
     requires: Vec<Requirement>,
+});
+
+proxied_entity!(Response, ResponseEntity, ResponseHandle {
+    text: String,
+}, {
+    leads_to: Option<Identifier>,
+    triggers: Option<Rc<ActionEntity>>,
+    requires: Vec<Requirement>,
+});
+
+impl<'a, T: Database> Character<'a, T> {
+    pub fn start_dialogue(&self) -> Dialogue<'_, T> {
+        self.db
+            .lookup_dialogue(&self.handle.0.start_dialogue)
+            .to_proxy(self.db)
+    }
 }
-
-#[derive(new)]
-pub struct ResponseRefs<'a>(&'a Response);
-
-impl<'a> ResponseRefs<'a> {
-    pub const fn leads_to(&self) -> &Option<Identifier> {
-        &self.0.leads_to
+impl<'a, T: Database> Dialogue<'a, T> {
+    pub fn responses(&self) -> impl Iterator<Item = Response<'_, T>> {
+        self.db
+            .lookup_responses(&self.handle.0.responses)
+            .into_iter()
+            .map(|r| r.to_proxy(self.db))
+    }
+}
+impl<'a, T: Database> Response<'a, T> {
+    pub fn leads_to(&self) -> Option<Dialogue<'_, T>> {
+        self.handle
+            .0
+            .leads_to
+            .clone()
+            .map(|id| self.db.lookup_dialogue(&id).to_proxy(self.db))
+    }
+    pub fn trigger(&self) -> Option<Action> {
+        self.handle.0.triggers.clone().map(From::from)
     }
 }

@@ -1,9 +1,10 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
+use indexmap::IndexMap;
 use ini::SectionIter;
 
 use crate::{
-    core::{Character, Identifier, Room, Title},
+    core::{CharacterEntity, Identifier, RoomEntity, Title},
     error,
 };
 
@@ -54,7 +55,7 @@ pub fn parse_rooms<'a>(
                     })?;
                 Ok((direction, room))
             })
-            .collect::<Result<HashMap<Identifier, Title>, error::Application>>()?;
+            .collect::<Result<IndexMap<Identifier, Title>, error::Application>>()?;
         let characters = record
             .get_list("characters")
             .map(|character_name| {
@@ -74,7 +75,7 @@ pub fn parse_rooms<'a>(
                     })?
                     .clone())
             })
-            .collect::<Result<Vec<Rc<Character>>, error::Application>>()?;
+            .collect::<Result<Vec<Rc<CharacterEntity>>, error::Application>>()?;
         let actions = record
             .get_list("actions")
             .map(|s| s.parse::<Identifier>())
@@ -86,7 +87,7 @@ pub fn parse_rooms<'a>(
             })?;
         let name = record.parse_name::<Title>()?;
         let room = Rc::new(
-            Room::builder()
+            RoomEntity::builder()
                 .name(name.clone())
                 .maybe_variant(record.variant().clone())
                 .description(description.to_owned())

@@ -4,6 +4,8 @@ Welcome to **Text Adventure Game,** a friendly game engine for making interactiv
 
 With a  plain text file, you can create your own dynamic story driven adventure. Define rooms that change with events, characters to talk to, and conversations that evolve with the story. You can even customize the theme with your own colors, or change the default game text to match your language or style of speech. After you define your game in an `.ini` file, you can run the engine with it, and bring your text adventure game to life!
 
+![Screenshot](screenshot.png)
+
 ## 📚 Table of Contents
 <details>
   <summary>(Click to see table of contents)</summary>
@@ -212,7 +214,7 @@ Defines colors for the UI. Most valid CSS colors should work, including RGB, hex
 
 ### [Language] (Optional)
 
-Allows you to override built-in strings (e.g., “Talk”, “Do”, “Go”) for localization or stylistic changes.
+Allows you to override built-in strings (e.g., “Talk”, “Do”, “Go”) for localization to different langauges or stylistic changes.
 
 ```ini
 [Language]

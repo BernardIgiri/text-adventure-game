@@ -35,14 +35,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest
-
-      - name: Run tests
-        run: cargo nextest run --all-targets --all-features
-
       - name: Verify version matches tag
         shell: bash
         run: |

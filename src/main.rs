@@ -9,9 +9,7 @@ mod ui;
 
 use clap::Parser;
 use config_parser::preprocess_to_ini_from_file;
-use core::{
-    ActionHandle, CharacterHandle, DialogueHandle, GameState, ResponseHandle, Room, ToProxy,
-};
+use core::{Action, ActionId, CharacterId, DialogueId, GameState, IntoProxy, ResponseId, Room};
 use player::Player;
 use std::{fs::File, path::PathBuf};
 use tracing::{self, info};
@@ -77,7 +75,6 @@ fn idle(state: &GameState, ui: &mut UI) -> Player {
     let room = state.current_room();
     let characters = room
         .characters()
-        .iter()
         .map(|v| v.name().to_string())
         .collect::<Vec<_>>();
     let exits = room
@@ -86,7 +83,7 @@ fn idle(state: &GameState, ui: &mut UI) -> Player {
         .collect::<Vec<_>>();
     let actions = room.actions().next().is_some();
     let choice = ui.present_room(
-        room.name().as_str(),
+        room.name(),
         room.description(),
         &characters,
         &exits,
@@ -111,50 +108,43 @@ fn starting_chat(state: &GameState, ui: &mut UI) -> Player {
     use Player as P;
     let room = state.current_room();
     let characters = room.characters();
-    let characters_names = characters
-        .iter()
-        .map(|v| v.name().to_string())
-        .collect::<Vec<_>>();
-    let choice =
-        ui.present_chat_targets(room.name().as_str(), room.description(), &characters_names);
+    let characters_names = characters.map(|v| v.name().to_string()).collect::<Vec<_>>();
+    let choice = ui.present_chat_targets(room.name(), room.description(), &characters_names);
+    let characters = room.characters().collect::<Vec<_>>();
     use StartChatChoice as C;
     match choice {
-        C::TalkTo(i) => P::ChatWith((&characters[i]).into(), None),
+        C::TalkTo(i) => P::ChatWith(characters[i].id(), None),
         C::NoOne => P::Idle,
     }
 }
 fn chat_with(
     state: &GameState,
     ui: &mut UI,
-    character: CharacterHandle,
-    dialogue: Option<DialogueHandle>,
+    character: CharacterId,
+    dialogue: Option<DialogueId>,
 ) -> Player {
     use Player as P;
-    let character = character.to_proxy(state);
+    let character = character.into_proxy(state);
     let dialogue = dialogue
-        .map(|d| d.to_proxy(state))
+        .map(|d| d.into_proxy(state))
         .unwrap_or_else(|| character.start_dialogue());
     let responses = dialogue.responses().collect::<Vec<_>>();
     let response_text = responses
         .iter()
         .map(|v| v.text().to_string())
         .collect::<Vec<_>>();
-    let choice = ui.present_chat(character.name().as_str(), dialogue.text(), &response_text);
+    let choice = ui.present_chat(character.name(), dialogue.text(), &response_text);
     use ChatChoice as C;
     match choice {
         C::RespondWith(i) => {
             let response = &responses[i];
             #[allow(clippy::option_if_let_else)]
             if let Some(action) = response.trigger() {
-                P::DoActionInChatResponse(
-                    action.into(),
-                    character.handle_clone(),
-                    response.handle_clone(),
-                )
+                P::DoActionInChatResponse(action.into_id(), character.id(), response.id())
             } else {
-                response.leads_to().map_or(P::Idle, |d| {
-                    P::ChatWith(character.handle_clone(), Some(d.handle_clone()))
-                })
+                response
+                    .leads_to()
+                    .map_or(P::Idle, |d| P::ChatWith(character.id(), Some(d.id())))
             }
         }
         C::Leave => P::Idle,
@@ -163,46 +153,40 @@ fn chat_with(
 fn do_action_in_chat_response(
     state: &mut GameState,
     ui: &mut UI,
-    action: ActionHandle,
-    character: CharacterHandle,
-    response: ResponseHandle,
+    action: ActionId,
+    character: CharacterId,
+    response: ResponseId,
 ) -> Player {
     use Player as P;
-    let (action_name, action_description) = {
-        let action = action.into_proxy();
-        let action_name = action.name().clone();
-        let action_description = action.description().clone();
-        action.do_it(state);
-        (action_name, action_description)
-    };
+    let action = action.into_proxy(state);
+    let action_name = action.name();
+    let action_description = action.description();
+    Action::<GameState>::do_it(action.into_id(), state);
     ui.present_action(action_name.as_str(), action_description.as_str(), true);
     response
-        .to_proxy(state)
+        .into_proxy(state)
         .leads_to()
-        .map_or(P::Idle, |d| P::ChatWith(character, Some(d.into())))
+        .map_or(P::Idle, |d| P::ChatWith(character, Some(d.into_id())))
 }
 fn selecting_action(state: &GameState, ui: &mut UI) -> Player {
     use Player as P;
     let room = state.current_room();
     let actions = room.actions().collect::<Vec<_>>();
-    let action_names = actions
-        .iter()
-        .map(|v| v.name().to_string())
-        .collect::<Vec<_>>();
-    let choice = ui.present_action_select(room.name().as_str(), room.description(), &action_names);
+    let action_names = actions.iter().map(|v| v.name()).collect::<Vec<_>>();
+    let choice = ui.present_action_select(room.name(), room.description(), &action_names);
     use InteractionChoice as C;
     match choice {
         C::Do(i) => {
             let action = &actions[i];
-            P::DoingAction(action.handle_clone())
+            P::DoingAction(action.id())
         }
         C::Nothing => P::Idle,
     }
 }
-fn doing_action(state: &mut GameState, ui: &mut UI, action: ActionHandle) -> Player {
+fn doing_action(state: &mut GameState, ui: &mut UI, action: ActionId) -> Player {
     use Player as P;
-    let action = action.into_proxy();
-    let success = action.do_it(state);
+    let success = Action::<GameState>::do_it(action, state);
+    let action = action.into_proxy(state);
     ui.present_action(
         action.name().as_str(),
         action.description().as_str(),
@@ -218,13 +202,13 @@ fn leaving(state: &mut GameState, ui: &mut UI) -> Player {
         .iter()
         .map(|e| e.direction().to_string())
         .collect::<Vec<_>>();
-    let choice = ui.present_exit_select(room.name().as_str(), room.description(), &directions);
+    let choice = ui.present_exit_select(room.name(), room.description(), &directions);
     use LeaveChoice as C;
     match choice {
         C::GoTo(i) => {
             let room = exits[i].room();
-            let room = room.handle_clone();
-            Room::enter(&room, state);
+            let room = room.id();
+            Room::<GameState>::enter(room, state);
             P::Idle
         }
         C::Stay => P::Idle,

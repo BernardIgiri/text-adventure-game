@@ -4,11 +4,15 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Application {
-    #[error("Cannot use value `{value}` in field `{field}`!")]
-    InvalidPropertyValue { value: String, field: &'static str },
-    #[error("Property `{property}` not found for `{entity}` with id `{id}`!")]
+    #[error("Cannot use value `{value}` in field `{field}` for entity `{etype}`!")]
+    InvalidPropertyValue {
+        etype: &'static str,
+        value: String,
+        field: &'static str,
+    },
+    #[error("Property `{property}` not found for `{etype}` with id `{id}`!")]
     PropertyNotFound {
-        entity: &'static str,
+        etype: &'static str,
         property: &'static str,
         id: String,
     },
@@ -16,6 +20,12 @@ pub enum Application {
     EntitySectionNotFound(&'static str),
     #[error("Could not find entity `{etype}` with id `{id}`!")]
     EntityNotFound { etype: &'static str, id: String },
+    #[error("Could not find entity `{etype}` with id `{id}` and variant `{variant}`!")]
+    EntityVariantNotFound {
+        etype: &'static str,
+        id: String,
+        variant: String,
+    },
     #[error("Failed to load file due to: {0}")]
     CouldNotLoadFile(String),
     #[error("Conversion failed for `{etype}` at property `{property}` with `{source}`")]
@@ -27,29 +37,31 @@ pub enum Application {
     },
     #[error("Incomplete data for entity `{0}`. A field could be missing or mispelled.")]
     EntityDataIncomplete(&'static str),
-    #[error("Missing entity references:\n{0:?}\n")]
-    MultipleMissingEntities(Vec<MissingEntityGroup>),
     #[error("Cannot find default `{etype}`  entity for id `{id}`")]
     DefaultEntityNotFound { etype: &'static str, id: String },
-    #[error("Missing properties {missing:?} for entity `{entity}` with id `{id}`!")]
+    #[error("Missing properties {missing:?} for entity `{etype}` with id `{id}`!")]
     MissingProperties {
         missing: Vec<String>,
-        entity: &'static str,
+        etype: &'static str,
         id: String,
     },
-    #[error("Found unexpected properties {unexpected:?} in entity `{entity}` with id `{id}`!")]
+    #[error("Found unexpected properties {unexpected:?} in entity `{etype}` with id `{id}`!")]
     UnexpectedProperties {
         unexpected: Vec<String>,
-        entity: &'static str,
+        etype: &'static str,
         id: String,
     },
     #[error("Unknown section `{0}` found!")]
     UnknownSectionFound(String),
-    #[error("Malformed multiline string found on lines {0}! Make sure you have the correct number of \"'s")]
+    #[error(
+        "Malformed multiline string found on lines {0}! Make sure you have the correct number of \"'s"
+    )]
     MalformedMultilineString(String),
-    #[error("Found potential circular reference in `{entity}` with id `{parent_id}` from link to child `{child_id}`")]
+    #[error(
+        "Found potential circular reference in `{etype}` with id `{parent_id}` from link to child `{child_id}`"
+    )]
     CircularReferenceFound {
-        entity: &'static str,
+        etype: &'static str,
         parent_id: String,
         child_id: String,
     },

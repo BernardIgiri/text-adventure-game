@@ -2,13 +2,13 @@ use ini::{Ini, SectionIter};
 
 use crate::{
     config_parser::iter::Record,
-    core::{GameTitle, Language, Theme},
+    core::{GameTitleRaw, Language, Theme},
     error,
 };
 
 use super::iter::{EntitySection, SectionRecordIter};
 
-pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
+pub fn parse_title(ini: &Ini) -> Result<GameTitleRaw, error::Application> {
     let properties = ini
         .section(None::<String>)
         .ok_or(error::EntitySectionNotFound(""))?;
@@ -17,22 +17,16 @@ pub fn parse_title(ini: &Ini) -> Result<GameTitle, error::Application> {
         &["title", "greeting", "credits", "start_room"],
         &[],
     )?;
-    let title = record.require("title")?;
-    let greeting = record.require("greeting")?;
-    let credits = record.require("credits")?;
-    let start_room = record.require("start_room")?;
-    Ok(GameTitle::new(
-        title.into(),
-        greeting.into(),
-        credits.into(),
-        start_room
-            .parse()
-            .map_err(|source| error::ConversionFailed {
-                etype: "",
-                property: "start_room",
-                source,
-            })?,
-    ))
+    let title = record.require("title")?.to_string();
+    let greeting = record.require("greeting")?.to_string();
+    let credits = record.require("credits")?.to_string();
+    let start_room = record.require_parsed("start_room")?;
+    Ok(GameTitleRaw {
+        title,
+        greeting,
+        credits,
+        start_room,
+    })
 }
 
 pub fn parse_theme<'a>(ini_iter: SectionIter<'a>) -> Result<Theme, error::Application> {
@@ -210,10 +204,10 @@ mod test {
     fn good_data() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
         let title = parse_title(&ini).unwrap();
-        assert_eq!(title.title(), &"The Beach Trip".to_string());
-        assert_eq!(title.greeting(), &"Welcome to the beach bro!".to_string());
-        assert_eq!(title.credits(), &"Special thanks to my mom!".to_string());
-        assert_eq!(title.start_room(), &t("TheCar"));
+        assert_eq!(title.title, "The Beach Trip".to_string());
+        assert_eq!(title.greeting, "Welcome to the beach bro!".to_string());
+        assert_eq!(title.credits, "Special thanks to my mom!".to_string());
+        assert_eq!(title.start_room, t("TheCar"));
     }
 
     #[test]

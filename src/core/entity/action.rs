@@ -1,68 +1,125 @@
-use std::rc::Rc;
-
-use bon::Builder;
-use derive_getters::Getters;
-use derive_new::new;
+use crate::{define_id, define_id_and_proxy};
 
 use super::{
-    Database, Title,
+    IntoProxy, ItemId, RoomId, RoomVariantId, Title,
+    database::{Lookup, Update},
     invariant::Identifier,
-    room::{Item, RoomEntity},
 };
 
-macro_rules! define_action {
-    (
-        $name:ident {
-            $(
-                $(#[$meta:meta])*
-                $field:ident : $type:ty
-            ),* $(,)?
-        }
-    ) => {
-        // Both ChangeRoom and TakeItem falsely report that required is unused
-        // required is used both in the parser and in GameState::do_action
-        #[allow(dead_code)]
-        #[derive(Getters, Builder, Debug, PartialEq, Eq)]
-        pub struct $name {
-            name: Identifier,
-            description: String,
-            $(
-                $(#[$meta])*
-                $field: $type,
-            )*
-        }
-    };
+#[derive(Debug)]
+pub struct ChangeRoomRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub required: Option<Identifier>,
+    pub room: Title,
+    pub variant: Option<Identifier>,
 }
-define_action!(ChangeRoom {
-    required: Option<Rc<Item>>,
-    room: Rc<RoomEntity>,
-});
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ChangeRoom {
+    pub name: String,
+    pub description: String,
+    pub required: Option<ItemId>,
+    pub room: RoomId,
+    pub variant: Option<RoomVariantId>,
+}
 
-define_action!(ReplaceItem {
-    original: Rc<Item>,
-    replacement: Rc<Item>,
-});
+#[derive(Debug)]
+pub struct ReplaceItemRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub original: Identifier,
+    pub replacement: Identifier,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ReplaceItem {
+    pub name: String,
+    pub description: String,
+    pub original: ItemId,
+    pub replacement: ItemId,
+}
 
-define_action!(GiveItem {
-    required: Option<Rc<Item>>,
-    items: Vec<Rc<Item>>,
-});
+#[derive(Debug)]
+pub struct GiveItemRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub required: Option<Identifier>,
+    pub items: Vec<Identifier>,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct GiveItem {
+    pub name: String,
+    pub description: String,
+    pub required: Option<ItemId>,
+    pub items: Vec<ItemId>,
+}
 
-define_action!(TakeItem {
-    items: Vec<Rc<Item>>,
-});
+#[derive(Debug)]
+pub struct TakeItemRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub items: Vec<Identifier>,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct TakeItem {
+    pub name: String,
+    pub description: String,
+    pub items: Vec<ItemId>,
+}
 
-define_action!(Teleport {
-    required: Option<Rc<Item>>,
-    room_name: Title,
-});
+#[derive(Debug)]
+pub struct TeleportRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub required: Option<Identifier>,
+    pub room: Title,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Teleport {
+    pub name: String,
+    pub description: String,
+    pub required: Option<ItemId>,
+    pub room: RoomId,
+}
 
-define_action!(Sequence {
-    required: Option<Rc<Item>>,
-    actions: Vec<Identifier>,
-});
+#[derive(Debug)]
+pub struct SequenceRaw {
+    pub name: Identifier,
+    pub description: String,
+    pub required: Option<Identifier>,
+    pub actions: Vec<Identifier>,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Sequence {
+    pub name: String,
+    pub description: String,
+    pub required: Option<ItemId>,
+    pub actions: Vec<ActionId>,
+}
 
-#[derive(Debug, PartialEq, Eq)]
+define_id_and_proxy!(ActionId, Action);
+
+#[derive(Debug)]
+pub enum ActionRaw {
+    ChangeRoom(ChangeRoomRaw),
+    GiveItem(GiveItemRaw),
+    ReplaceItem(ReplaceItemRaw),
+    TakeItem(TakeItemRaw),
+    Teleport(TeleportRaw),
+    Sequence(SequenceRaw),
+}
+impl ActionRaw {
+    pub const fn name(&self) -> &Identifier {
+        match self {
+            Self::ChangeRoom(change_room) => &change_room.name,
+            Self::GiveItem(give_item) => &give_item.name,
+            Self::ReplaceItem(replace_item) => &replace_item.name,
+            Self::TakeItem(take_item) => &take_item.name,
+            Self::Teleport(teleport) => &teleport.name,
+            Self::Sequence(chain) => &chain.name,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionEntity {
     ChangeRoom(ChangeRoom),
     GiveItem(GiveItem),
@@ -71,80 +128,33 @@ pub enum ActionEntity {
     Teleport(Teleport),
     Sequence(Sequence),
 }
-
-#[derive(new, Clone, Debug, PartialEq, Eq)]
-pub struct ActionHandle(Rc<ActionEntity>);
-impl ActionHandle {
-    pub fn into_proxy(self) -> Action {
-        self.into()
+impl<'a, DB: Lookup> Action<'a, DB> {
+    fn action(&self) -> &ActionEntity {
+        self.db.lookup_action(self.id)
     }
-}
-impl From<Rc<ActionEntity>> for ActionHandle {
-    fn from(value: Rc<ActionEntity>) -> Self {
-        Self::new(value)
-    }
-}
-impl From<&Rc<ActionEntity>> for ActionHandle {
-    fn from(value: &Rc<ActionEntity>) -> Self {
-        Self::new(value.clone())
-    }
-}
-
-#[derive(new)]
-pub struct Action {
-    handle: ActionHandle,
-}
-impl From<Action> for ActionHandle {
-    fn from(proxy: Action) -> Self {
-        proxy.handle
-    }
-}
-impl From<ActionHandle> for Action {
-    fn from(value: ActionHandle) -> Self {
-        Self::new(value)
-    }
-}
-impl From<&Rc<ActionEntity>> for Action {
-    fn from(value: &Rc<ActionEntity>) -> Self {
-        Self::new(value.into())
-    }
-}
-impl From<Rc<ActionEntity>> for Action {
-    fn from(value: Rc<ActionEntity>) -> Self {
-        Self::new(value.into())
-    }
-}
-impl Action {
-    pub fn name(&self) -> &Identifier {
+    pub fn name(&self) -> String {
         use ActionEntity as A;
-        match &*self.handle.0 {
-            A::ChangeRoom(change_room) => &change_room.name,
-            A::GiveItem(give_item) => &give_item.name,
-            A::ReplaceItem(replace_item) => &replace_item.name,
-            A::TakeItem(take_item) => &take_item.name,
-            A::Teleport(teleport) => &teleport.name,
-            A::Sequence(chain) => &chain.name,
+        match self.action() {
+            A::ChangeRoom(change_room) => change_room.name.to_string(),
+            A::GiveItem(give_item) => give_item.name.to_string(),
+            A::ReplaceItem(replace_item) => replace_item.name.to_string(),
+            A::TakeItem(take_item) => take_item.name.to_string(),
+            A::Teleport(teleport) => teleport.name.to_string(),
+            A::Sequence(chain) => chain.name.to_string(),
         }
     }
-    pub fn description(&self) -> &String {
+    pub fn description(&self) -> String {
         use ActionEntity as A;
-        match &*self.handle.0 {
-            A::ChangeRoom(change_room) => &change_room.description,
-            A::GiveItem(give_item) => &give_item.description,
-            A::ReplaceItem(replace_item) => &replace_item.description,
-            A::TakeItem(take_item) => &take_item.description,
-            A::Teleport(teleport) => &teleport.description,
-            A::Sequence(chain) => &chain.description,
+        match self.action() {
+            A::ChangeRoom(change_room) => change_room.description.to_string(),
+            A::GiveItem(give_item) => give_item.description.to_string(),
+            A::ReplaceItem(replace_item) => replace_item.description.to_string(),
+            A::TakeItem(take_item) => take_item.description.to_string(),
+            A::Teleport(teleport) => teleport.description.to_string(),
+            A::Sequence(chain) => chain.description.to_string(),
         }
     }
-    pub fn do_it<'b, T: Database>(&'b self, db: &'b mut T) -> bool {
-        db.do_action(&self.handle.0)
-    }
-    #[allow(dead_code)]
-    pub fn into_handle(self) -> ActionHandle {
-        self.into()
-    }
-    pub fn handle_clone(&self) -> ActionHandle {
-        self.handle.clone()
+    pub fn do_it(id: ActionId, db: &mut impl Update) -> bool {
+        db.do_action(id)
     }
 }

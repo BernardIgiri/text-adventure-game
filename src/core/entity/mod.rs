@@ -1,6 +1,6 @@
 mod action;
 mod character;
-mod database;
+pub mod database;
 mod invariant;
 mod proxy;
 mod room;

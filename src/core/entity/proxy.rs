@@ -1,126 +1,88 @@
-use super::Database;
+use super::database::Lookup;
 
 /*
-    Omitted fields are in the second bracket and will not be automatically added to the proxy.
-*/
-#[macro_export]
-macro_rules! proxied_entity {
-    (
-        $proxy:ident,
-        $entity:ident,
-        $handle:ident {
-            $(
-                $(#[$meta:meta])*
-                $field:ident : $type:ty
-            ),* $(,)?
-        }, {
-            $(
-                $(#[$meta_omitted:meta])*
-                $field_omitted:ident : $type_omitted:ty
-            ),* $(,)?
-        }
-    ) => {
-        $crate::naked_entity!(
-            $entity,
-            $handle {
-                $(
-                    $(#[$meta])*
-                    $field: $type,
-                )*
-                $(
-                    $(#[$meta_omitted])*
-                    $field_omitted: $type_omitted,
-                )*
-            }
-        );
-        #[derive(new)]
-        pub struct $proxy<'a, T: Database> {
-            handle: $handle,
-            db: &'a T,
-        }
-        impl<'a, T: Database> $proxy<'a, T> {
-            #[allow(dead_code)]
-            pub fn into_handle(self) -> $handle {
-                self.into()
-            }
-        }
-        impl<'a, T: Database> $proxy<'a, T> {
-            #[allow(dead_code)]
-            pub fn handle_clone(&self) -> $handle {
-                self.handle.clone()
-            }
-        }
-        impl<'a, T: Database> $proxy<'a, T> {
-            $(
-                #[allow(dead_code)]
-                pub fn $field(&self) -> &'_ $type {
-                    &self.handle.0.$field
-                }
-            )*
-        }
-        impl<'a, T: Database> From<$proxy<'a, T>> for $handle {
-            fn from(proxy: $proxy<'a, T>) -> Self {
-                proxy.handle
-            }
-        }
-        impl<T: Database> ToProxy<T> for $handle {
-            type Proxy<'a> = $proxy<'a, T> where Self: 'a, T: 'a;
 
-            fn to_proxy<'a>(self, db: &'a T) -> Self::Proxy<'a> {
+Database <- entity store and update
+Raw <- from disk, is naked
+Entity <- runtime variant, is naked
+Proxy <- proxy
+Id <- typed index into graph
+
+Proxy -> Id
+proxy.id()
+
+Id -> Proxy
+id.into_proxy(&db)
+Proxy::new(id, &db)
+
+Id -> Entity
+db.look_up(&id)
+
+No path from Entity to id or proxy
+
+*/
+
+pub trait IntoProxy<'a, Id, DB: Lookup, ProxyT> {
+    fn into_proxy(self, db: &'a DB) -> ProxyT;
+}
+
+#[macro_export]
+macro_rules! define_id {
+    ($id:ident) => {
+        #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        pub struct $id(usize);
+
+        impl From<usize> for $id {
+            fn from(v: usize) -> Self {
+                $id(v)
+            }
+        }
+
+        impl From<&usize> for $id {
+            fn from(v: &usize) -> Self {
+                $id(*v)
+            }
+        }
+
+        impl From<$id> for usize {
+            fn from(v: $id) -> Self {
+                v.0
+            }
+        }
+
+        impl From<&$id> for usize {
+            fn from(v: &$id) -> Self {
+                v.0
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! define_id_and_proxy {
+    ($id:ident, $proxy:ident) => {
+        define_id!($id);
+        pub struct $proxy<'a, DB: Lookup> {
+            id: $id,
+            db: &'a DB,
+        }
+        impl<'a, DB: Lookup> $proxy<'a, DB> {
+            pub const fn new(id: $id, db: &'a DB) -> Self {
+                Self { id, db }
+            }
+            #[allow(dead_code)]
+            pub const fn into_id(self) -> $id {
+                self.id
+            }
+            pub fn id(&self) -> $id {
+                self.id.clone()
+            }
+        }
+
+        impl<'a, DB: Lookup> IntoProxy<'a, $id, DB, $proxy<'a, DB>> for $id {
+            fn into_proxy(self, db: &'a DB) -> $proxy<'a, DB> {
                 $proxy::new(self, db)
             }
         }
-
-        impl<T: Database> ToProxy<T> for Rc<$entity> {
-            type Proxy<'a> = $proxy<'a, T> where Self: 'a, T: 'a;
-
-            fn to_proxy<'a>(self, db: &'a T) -> Self::Proxy<'a> {
-                let handle = $handle::from(self);
-                $proxy::new(handle, db)
-            }
-        }
     };
-}
-
-#[macro_export]
-macro_rules! naked_entity {
-    (
-        $entity:ident,
-        $handle:ident {
-            $(
-                $(#[$meta:meta])*
-                $field:ident : $type:ty
-            ),* $(,)?
-        }
-    ) => {
-        #[allow(dead_code)]
-        #[derive(Getters, Builder, Debug, PartialEq, Eq)]
-        pub struct $entity {
-            $(
-                $(#[$meta])*
-                $field: $type,
-            )*
-        }
-        impl From<Rc<$entity>> for $handle {
-            fn from(entity: Rc<$entity>) -> Self {
-                $handle::new(entity)
-            }
-        }
-        impl From<&Rc<$entity>> for $handle {
-            fn from(entity: &Rc<$entity>) -> Self {
-                $handle::new(entity.clone())
-            }
-        }
-        #[derive(new, Clone, Debug, PartialEq, Eq)]
-        pub struct $handle(Rc<$entity>);
-    };
-}
-
-pub trait ToProxy<T: Database> {
-    type Proxy<'a>
-    where
-        Self: 'a,
-        T: 'a;
-
-    fn to_proxy<'a>(self, db: &'a T) -> Self::Proxy<'a>;
 }

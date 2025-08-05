@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use derive_more::{AsRef, Debug, Display};
 use regex::Regex;
-use std::{str::FromStr, sync::LazyLock};
+use std::{rc::Rc, str::FromStr, sync::LazyLock};
 
 use super::IllegalConversion;
 
@@ -12,21 +12,15 @@ static IDENTIFIER_RX: LazyLock<Regex> =
 static TITLE_RX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[A-Z]{1,1}[A-Za-z_]+$").expect("ValidRx"));
 
-#[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash)]
-pub struct Identifier(String);
-
-impl Identifier {
-    pub const fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
+#[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Identifier(Rc<String>);
 
 impl FromStr for Identifier {
     type Err = IllegalConversion;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if IDENTIFIER_RX.is_match(s) {
-            Ok(Self(s.to_case(Case::Snake)))
+            Ok(Self(Rc::new(s.to_case(Case::Snake))))
         } else {
             Err(IllegalConversion {
                 value: s.into(),
@@ -36,21 +30,15 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash)]
-pub struct Title(String);
-
-impl Title {
-    pub const fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
+#[derive(Debug, Display, AsRef, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Title(Rc<String>);
 
 impl FromStr for Title {
     type Err = IllegalConversion;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if TITLE_RX.is_match(s) {
-            Ok(Self(s.to_case(Case::Title)))
+            Ok(Self(Rc::new(s.to_case(Case::Title))))
         } else {
             Err(IllegalConversion {
                 value: s.into(),

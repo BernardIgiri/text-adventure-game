@@ -1,15 +1,22 @@
 use bon::Builder;
 use derive_getters::Getters;
-use derive_new::new;
 
-use super::{ThemeColor, Title};
+use super::{RoomId, ThemeColor, Title};
 
-#[derive(Getters, new, Debug, PartialEq, Eq)]
+#[derive(Debug)]
+pub struct GameTitleRaw {
+    pub title: String,
+    pub greeting: String,
+    pub credits: String,
+    pub start_room: Title,
+}
+
+#[derive(Getters, Builder, Debug, PartialEq, Eq)]
 pub struct GameTitle {
     title: String,
     greeting: String,
     credits: String,
-    start_room: Title,
+    start_room: RoomId,
 }
 
 #[derive(Getters, Builder, Debug, PartialEq, Eq)]

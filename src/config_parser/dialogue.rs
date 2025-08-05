@@ -1,57 +1,32 @@
-use std::rc::Rc;
-
 use ini::SectionIter;
 
-use crate::{
-    core::{DialogueEntity, ResponseEntity},
-    error,
-};
+use crate::{core::DialogueRaw, error};
 
 use super::{
     iter::{EntitySection, SectionRecordIter},
     requirement::parse_requirements,
-    types::{DialogueMap, ItemMap, ResponseMap, RoomMap},
 };
 
-pub fn parse_dialogues(
-    ini_iter: SectionIter,
-    response_map: &ResponseMap,
-    item_map: &ItemMap,
-    room_map: &RoomMap,
-) -> Result<DialogueMap, error::Application> {
-    let mut map = DialogueMap::new();
+pub fn parse_dialogues(ini_iter: SectionIter) -> Result<Vec<DialogueRaw>, error::Application> {
+    let mut list = Vec::new();
     for record in SectionRecordIter::new(ini_iter, EntitySection::Dialogue) {
         let record = record?.into_record(&["text"], &["response", "requires"])?;
-        let text = record.require("text")?;
+        let text = record.require("text")?.to_string();
         let responses = record
-            .get_list("response")
-            .map(|s| {
-                Ok(response_map
-                    .get(&s.parse().map_err(|source| error::ConversionFailed {
-                        etype: "Dialogue",
-                        property: "response",
-                        source,
-                    })?)
-                    .ok_or_else(|| error::EntityNotFound {
-                        etype: "Response",
-                        id: s.into(),
-                    })?
-                    .clone())
-            })
-            .collect::<Result<Vec<Rc<ResponseEntity>>, error::Application>>()?;
-        let requires = parse_requirements(&record, item_map, room_map)?;
-        let dialogue = Rc::new(
-            DialogueEntity::builder()
-                .text(text.into())
-                .responses(responses)
-                .requires(requires)
-                .build(),
-        );
-        map.entry(record.parse_name()?)
-            .or_default()
-            .insert(record.variant().clone(), dialogue);
+            .get_list_parsed("response")
+            .collect::<Result<Vec<_>, error::Application>>()?;
+        let requires = parse_requirements(&record)?;
+        let name = record.parse_name()?;
+        let variant = record.variant().clone();
+        list.push(DialogueRaw {
+            name,
+            variant,
+            text,
+            responses,
+            requires,
+        });
     }
-    Ok(map)
+    Ok(list)
 }
 
 // Allowed in tests
@@ -59,17 +34,9 @@ pub fn parse_dialogues(
 #[cfg(test)]
 mod test {
 
-    use std::ops::Deref;
-
     use ini::Ini;
 
-    use crate::{
-        config_parser::test_utils::{
-            data::{TakeClone, TakeCloneVariant, action_map, item_map, response_map, room_map},
-            i,
-        },
-        core::Requirement,
-    };
+    use crate::config_parser::test_utils::i;
 
     use super::*;
     use asserting::prelude::*;
@@ -98,86 +65,42 @@ mod test {
         requires=room_variant:WoodShed
     ";
 
-    const BAD_DATA_BAD_VARIANT: &str = r"
-        [Dialogue:farmer_greeting]
-        text=Howdy there stranger!
-        response=hello,goodbye
-        requires=room_variant:WoodShed|blessed
-    ";
-
     const BAD_DATA_BAD_REQUIREMENT: &str = r"
         [Dialogue:farmer_greeting]
         text=Howdy there stranger!
         response=hello,goodbye
-        requires=has_item:unobtainium_ore
+        requires=has_itemunobtainium_ore
     ";
 
     #[test]
     fn parse_dialogue_sucessfully() {
         let ini = Ini::load_from_str(GOOD_DATA).unwrap();
-        let items = item_map();
-        let rooms = room_map(false);
-        let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
-        let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms).unwrap();
-
+        let dialogues = parse_dialogues(ini.iter()).unwrap();
         assert_that!(&dialogues)
-            .has_length(3)
-            .contains_key(i("farmer_greeting"))
-            .contains_key(i("cow_emote"));
-
-        let result = dialogues.take("cow_emote", None);
-        let expected = DialogueEntity::builder()
-            .text("Moo!".into())
-            .responses(vec![])
-            .requires(vec![])
-            .build();
-        assert_eq!(result.deref(), &expected);
-
-        let result = dialogues.take("robery", None);
-        let expected = DialogueEntity::builder()
-            .text("Empty your pockets kid!".into())
-            .responses(vec![])
-            .requires(vec![
-                Requirement::HasItem(items.take_clone("ring")),
-                Requirement::HasItem(items.take_clone("key")),
-                Requirement::RoomVariant(rooms.take_clone("WoodShed", Some("closed"))),
-            ])
-            .build();
-        assert_eq!(result.deref(), &expected);
-
-        let result = dialogues.take("farmer_greeting", Some("scared"));
-        let expected = DialogueEntity::builder()
-            .text("Hey, is somebody there?".into())
-            .responses(vec![])
-            .requires(vec![Requirement::RoomVariant(
-                rooms.take_clone("WoodShed", Some("closed")),
-            )])
-            .build();
-        assert_eq!(result.deref(), &expected);
-
-        let result = dialogues.take("farmer_greeting", None);
-        let expected = DialogueEntity::builder()
-            .text("Howdy there stranger!".into())
-            .responses(vec![
-                responses.take_clone("hello"),
-                responses.take_clone("goodbye"),
-            ])
-            .requires(vec![Requirement::RoomVariant(
-                rooms.take_clone("WoodShed", None),
-            )])
-            .build();
-        assert_eq!(result.deref(), &expected);
+            .has_length(4)
+            .satisfies_with_message("has expected ids", |d| {
+                d.iter().any(|d| d.name == i("farmer_greeting"))
+                    && d.iter().any(|d| d.name == i("cow_emote"))
+                    && d.iter().any(|d| d.name == i("robery"))
+            })
+            .satisfies_with_message("has expected variants", |d| {
+                d.iter()
+                    .any(|d| d.name == i("farmer_greeting") && d.variant.is_none())
+                    && d.iter()
+                        .any(|d| d.name == i("farmer_greeting") && d.variant == Some(i("scared")))
+            })
+            .satisfies_with_message("contains expected text", |d| {
+                d.iter().any(|d| d.text == "Howdy there stranger!")
+            })
+            .satisfies_with_message("has requirements", |d| {
+                d.iter().any(|d| !d.requires.is_empty())
+            });
     }
 
     #[test]
     fn parse_dialogue_missing_text() {
         let ini = Ini::load_from_str(BAD_DATA_MISSING_TEXT).unwrap();
-        let items = item_map();
-        let rooms = room_map(false);
-        let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
-        let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);
+        let dialogues = parse_dialogues(ini.iter());
         assert_that!(dialogues)
             .is_err()
             .extracting(|e| e.err().unwrap().to_string())
@@ -188,35 +111,13 @@ mod test {
     }
 
     #[test]
-    fn parse_dialogue_bad_variant() {
-        let ini = Ini::load_from_str(BAD_DATA_BAD_VARIANT).unwrap();
-        let items = item_map();
-        let rooms = room_map(false);
-        let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
-        let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);
-        assert_that!(dialogues)
-            .is_err()
-            .extracting(|e| e.err().unwrap().to_string())
-            .contains("not find")
-            .contains("blessed")
-            .contains("WoodShed")
-            .contains("Room");
-    }
-
-    #[test]
     fn parse_dialogue_bad_requirement() {
         let ini = Ini::load_from_str(BAD_DATA_BAD_REQUIREMENT).unwrap();
-        let items = item_map();
-        let rooms = room_map(false);
-        let actions = action_map(&rooms, &items);
-        let responses = response_map(&actions);
-        let dialogues = parse_dialogues(ini.iter(), &responses, &items, &rooms);
+        let dialogues = parse_dialogues(ini.iter());
         assert_that!(dialogues)
             .is_err()
             .extracting(|e| e.err().unwrap().to_string())
-            .contains("not find")
             .contains("unobtainium_ore")
-            .contains("Item");
+            .contains("requirement");
     }
 }

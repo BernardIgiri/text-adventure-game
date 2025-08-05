@@ -1,10 +1,10 @@
-use crate::core::{ActionHandle, CharacterHandle, DialogueHandle, ResponseHandle};
+use crate::core::{ActionId, CharacterId, DialogueId, ResponseId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Player {
-    ChatWith(CharacterHandle, Option<DialogueHandle>),
-    DoActionInChatResponse(ActionHandle, CharacterHandle, ResponseHandle),
-    DoingAction(ActionHandle),
+    ChatWith(CharacterId, Option<DialogueId>),
+    DoActionInChatResponse(ActionId, CharacterId, ResponseId),
+    DoingAction(ActionId),
     GameOver,
     Idle,
     Leaving,

@@ -49,12 +49,14 @@ impl<'a> UnverifiedRecord<'a> {
         let section = section_parts
             .next()
             .ok_or_else(|| error::InvalidPropertyValue {
+                etype: "Unknown",
                 value: input.into(),
                 field: "Section Name",
             })?
             .trim();
         let section =
             EntitySection::from_str(section).map_err(|_| error::InvalidPropertyValue {
+                etype: "Not Found",
                 value: input.into(),
                 field: "Section Name",
             })?;
@@ -77,6 +79,7 @@ impl<'a> UnverifiedRecord<'a> {
         let name = parts
             .next()
             .ok_or_else(|| error::InvalidPropertyValue {
+                etype: section,
                 value: qualified_name.into(),
                 field: "qualified name",
             })?
@@ -122,7 +125,7 @@ impl<'a> UnverifiedRecord<'a> {
                 let id = self.qualified_name.into();
                 Err(error::MissingProperties {
                     missing: missing_keys.map(|s| s.to_string()).collect(),
-                    entity,
+                    etype: entity,
                     id,
                 })
             }
@@ -134,7 +137,7 @@ impl<'a> UnverifiedRecord<'a> {
                 let id = self.qualified_name.into();
                 Err(error::UnexpectedProperties {
                     unexpected: unexpected_keys.map(|s| s.to_string()).collect(),
-                    entity,
+                    etype: entity,
                     id,
                 })
             }
@@ -179,7 +182,7 @@ impl<'a> Record<'a> {
     pub fn require(&self, prop: &'static str) -> Result<&str, error::Application> {
         self.get(prop).ok_or_else(|| error::PropertyNotFound {
             #[allow(clippy::expect_used)]
-            entity: EntitySection::from_str(self.0.section)
+            etype: EntitySection::from_str(self.0.section)
                 .expect("Valid record sections should already be established by now!")
                 .into(),
             property: prop,
@@ -223,6 +226,22 @@ impl<'a> Record<'a> {
             .map(str::trim)
             .filter(|s| !s.is_empty())
     }
+    pub fn get_list_parsed<T>(
+        &self,
+        prop: &'static str,
+    ) -> impl Iterator<Item = Result<T, error::Application>>
+    where
+        T: FromStr<Err = IllegalConversion>,
+    {
+        self.get_list(prop).map(|s| {
+            s.parse::<T>().map_err(|source| error::ConversionFailed {
+                etype: self.0.section,
+                property: "name",
+                source,
+            })
+        })
+    }
+    #[allow(dead_code)]
     pub fn require_list(
         &self,
         prop: &'static str,
@@ -339,7 +358,7 @@ mod tests {
             error::Application::PropertyNotFound {
                 property,
                 id,
-                entity,
+                etype: entity,
             } => {
                 assert_eq!(property, "description");
                 assert_eq!(id, "ring");
@@ -379,7 +398,7 @@ mod tests {
         match err {
             error::Application::MissingProperties {
                 missing,
-                entity,
+                etype: entity,
                 id,
             } => {
                 assert_eq!(missing, vec!["description".to_string()]);
@@ -404,7 +423,7 @@ mod tests {
         match err {
             error::Application::UnexpectedProperties {
                 unexpected,
-                entity,
+                etype: entity,
                 id,
             } => {
                 assert_eq!(unexpected, vec!["color".to_string()]);

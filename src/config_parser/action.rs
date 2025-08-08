@@ -4,12 +4,12 @@ use crate::{
     config_parser::iter::{EntitySection, SectionRecordIter},
     core::{
         ActionRaw, ChangeRoomRaw, GiveItemRaw, Identifier, ReplaceItemRaw, SequenceRaw,
-        TakeItemRaw, TeleportRaw, Title,
+        TakeItemRaw, TeleportRaw,
     },
     error,
 };
 
-use super::iter::UnverifiedRecord;
+use super::iter::{IterRequireWith, ParseWith, UnverifiedRecord};
 
 type ActionResult = Result<ActionRaw, error::Application>;
 
@@ -30,7 +30,7 @@ pub fn parse_actions<'a>(ini_iter: SectionIter<'a>) -> Result<Vec<ActionRaw>, er
         } else if record.contains_key("sequence") {
             next_sequence_action(record)
         } else {
-            Err(error::EntityDataIncomplete("Action"))
+            Err(error::EntityDataIncomplete("Action".into()))
         }?;
         list.push(action);
     }
@@ -43,30 +43,16 @@ fn next_change_room_action(record: UnverifiedRecord) -> ActionResult {
         let change_room = record.require("change_room")?;
         let mut parts = change_room.splitn(2, "->");
         let room = parts
-            .next()
-            .ok_or_else(|| error::PropertyNotFound {
-                etype: "Action",
-                property: "change_room:<name>",
-                id: record.qualified_name().into(),
-            })?
+            .require_next(&record, "change_room:<name>")?
             .trim()
-            .parse::<Title>()
-            .map_err(|source| error::ConversionFailed {
-                etype: "Action",
-                property: "change_room:<RoomName>",
-                source,
-            })?;
-        let variant =
-            match parts.next() {
-                Some(v) => Some(v.trim().parse::<Identifier>().map_err(|source| {
-                    error::ConversionFailed {
-                        etype: "Action",
-                        property: "change_room:RoomName-><variant>",
-                        source,
-                    }
-                })?),
-                None => None,
-            };
+            .parse_with(&record, "change_room:<RoomName>")?;
+        let variant = match parts.next() {
+            Some(v) => Some(
+                v.trim()
+                    .parse_with(&record, "change_room:RoomName-><variant>")?,
+            ),
+            None => None,
+        };
         (room, variant)
     };
     let description = record.require("description")?.to_string();
@@ -130,31 +116,10 @@ fn next_replace_item_action(record: UnverifiedRecord) -> ActionResult {
     let description = record.require("description")?.to_string();
     let replace_item = record.require("replace_item")?;
     let mut parts = replace_item.splitn(2, "->");
-    let original = parts.next().ok_or_else(|| error::PropertyNotFound {
-        etype: "Action",
-        property: "replace_item:<original>",
-        id: record.qualified_name().into(),
-    })?;
-    let original = original
-        .parse::<Identifier>()
-        .map_err(|source| error::ConversionFailed {
-            etype: "Action",
-            property: "replace_item:<original>",
-            source,
-        })?;
-    let replacement = parts.next().ok_or_else(|| error::PropertyNotFound {
-        etype: "Action",
-        property: "replace_item:original-><replacement>",
-        id: record.qualified_name().into(),
-    })?;
-    let replacement =
-        replacement
-            .parse::<Identifier>()
-            .map_err(|source| error::ConversionFailed {
-                etype: "Action",
-                property: "replace_item:original-><replacement>",
-                source,
-            })?;
+    let original = parts.require_next(&record, "replace_item:<original>")?;
+    let original = original.parse_with(&record, "replace_item:<original>")?;
+    let replacement = parts.require_next(&record, "replace_item:original-><replacement>")?;
+    let replacement = replacement.parse_with(&record, "replace_item:original-><replacement>")?;
     let name = record.parse_name::<Identifier>()?;
     Ok(ActionRaw::ReplaceItem(ReplaceItemRaw {
         name,
@@ -168,13 +133,8 @@ fn next_sequence_action(record: UnverifiedRecord) -> ActionResult {
     let record = record.into_record(&["sequence", "description"], &["required"])?;
     let actions = record
         .get_list("sequence")
-        .map(|s| s.trim().parse::<Identifier>())
-        .collect::<Result<Vec<Identifier>, _>>()
-        .map_err(|source| error::ConversionFailed {
-            etype: "Action",
-            property: "sequence",
-            source,
-        })?;
+        .map(|s| s.trim().parse_with(&record, "sequence"))
+        .collect::<Result<Vec<Identifier>, _>>()?;
     let description = record.require("description")?.to_string();
     let required = record.get_parsed("required")?;
     let name = record.parse_name::<Identifier>()?;

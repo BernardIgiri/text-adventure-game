@@ -227,9 +227,9 @@ pub fn parse(ini: Ini) -> Result<World, error::Application> {
             for id in s.actions.iter() {
                 if let ActionEntity::Sequence(inner) = &actions[usize::from(id)] {
                     return Err(error::CircularReferenceFound {
-                        etype: "ActionSequence",
-                        parent_id: s.name.clone(),
-                        child_id: inner.name.clone(),
+                        etype: "ActionSequence".into(),
+                        parent_id: s.name.clone().into(),
+                        child_id: inner.name.clone().into(),
                     });
                 }
             }
@@ -317,8 +317,8 @@ where
 {
     fn require(&self, key: &K) -> Result<V, error::Application> {
         self.get(key).cloned().ok_or_else(|| error::EntityNotFound {
-            etype: <V as HasEntityType>::entity_type(),
-            id: key.to_string(),
+            etype: <V as HasEntityType>::entity_type().into(),
+            id: key.to_string().into(),
         })
     }
 }
@@ -386,13 +386,13 @@ impl HasIdAndVariantId<DialogueRaw> for IdMap<DialogueRaw> {
         Ok(self
             .get(name)
             .ok_or_else(|| error::EntityNotFound {
-                etype: "Dialogue",
-                id: name.to_string(),
+                etype: "Dialogue".into(),
+                id: name.to_string().into(),
             })?
             .get(&None)
             .ok_or_else(|| error::DefaultEntityNotFound {
-                etype: "Dialogue default ",
-                id: name.to_string(),
+                etype: "Dialogue default".into(),
+                id: name.to_string().into(),
             })?
             .0)
     }
@@ -408,16 +408,16 @@ impl HasIdAndVariantId<DialogueRaw> for IdMap<DialogueRaw> {
             Some(
                 self.get(name)
                     .ok_or_else(|| error::EntityNotFound {
-                        etype: "Dialogue",
-                        id: name.to_string(),
+                        etype: "Dialogue".into(),
+                        id: name.to_string().into(),
                     })?
                     .get(variant)
                     .ok_or_else(|| error::EntityVariantNotFound {
-                        etype: "Dialogue",
-                        id: name.to_string(),
+                        etype: "Dialogue".into(),
+                        id: name.to_string().into(),
                         variant: variant
                             .clone()
-                            .map_or_else(|| "None".to_string(), |v| v.to_string()),
+                            .map_or_else(|| "None".into(), |v| v.to_string().into()),
                     })?
                     .1,
             )
@@ -432,13 +432,13 @@ impl HasIdAndVariantId<RoomRaw> for IdMap<RoomRaw> {
         Ok(self
             .get(name)
             .ok_or_else(|| error::EntityNotFound {
-                etype: "Room",
-                id: name.to_string(),
+                etype: "Room".into(),
+                id: name.to_string().into(),
             })?
             .get(&None)
             .ok_or_else(|| error::DefaultEntityNotFound {
-                etype: "Room default ",
-                id: name.to_string(),
+                etype: "Room default".into(),
+                id: name.to_string().into(),
             })?
             .0)
     }
@@ -454,16 +454,16 @@ impl HasIdAndVariantId<RoomRaw> for IdMap<RoomRaw> {
             Some(
                 self.get(name)
                     .ok_or_else(|| error::EntityNotFound {
-                        etype: "Room",
-                        id: name.to_string(),
+                        etype: "Room".into(),
+                        id: name.to_string().into(),
                     })?
                     .get(variant)
                     .ok_or_else(|| error::EntityVariantNotFound {
-                        etype: "Room",
-                        id: name.to_string(),
+                        etype: "Room".into(),
+                        id: name.to_string().into(),
                         variant: variant
                             .clone()
-                            .map_or_else(|| "None".to_string(), |v| v.to_string()),
+                            .map_or_else(|| "None".into(), |v| v.to_string().into()),
                     })?
                     .1,
             )
@@ -498,7 +498,7 @@ fn validate_section_types(ini: &Ini) -> Result<(), error::Application> {
     for section in ini.sections().flatten() {
         let section = section.split(':').next().unwrap_or("");
         if !allowed_set.contains(section) {
-            return Err(error::UnknownSectionFound(section.to_string()));
+            return Err(error::UnknownSectionFound(section.into()));
         }
     }
     Ok(())
@@ -846,14 +846,14 @@ text=Response B
             start_room = MissingRoom
             "#, room_a()],
         |e: &error::Application| {
-            assert_matches!(e, error::EntityNotFound { etype, id } if *etype == "Room" && id == "Missing Room");
+            assert_matches!(e, error::EntityNotFound { etype, id } if *etype == "Room".into() && *id == "Missing Room".into());
             true
         }
     )]
     #[case::unknown_section(
         vec![title_section(), "[BadSection:foo]\nkey=value"],
         |e: &error::Application| {
-            assert_matches!(e, error::UnknownSectionFound(s) if s == "BadSection");
+            assert_matches!(e, error::UnknownSectionFound(s) if *s == "BadSection".into());
             true
         }
     )]
@@ -899,7 +899,7 @@ text=Response B
             .is_err()
             .extracting(|e| e.err().unwrap())
             .satisfies(|e| {
-                assert_matches!(e, error::CircularReferenceFound { etype, .. } if *etype == "ActionSequence");
+                assert_matches!(e, error::CircularReferenceFound { etype, .. } if *etype == "ActionSequence".into());
                 true
             });
     }
@@ -931,7 +931,7 @@ text=Response B
             .is_err()
             .extracting(|e| e.err().unwrap())
             .satisfies(|e| {
-                assert_matches!(e, error::EntityNotFound { etype, id } if *etype == "Item" && id == "missing_item");
+                assert_matches!(e, error::EntityNotFound { etype, id } if *etype == "Item".into() && *id == "missing_item".into());
                 true
             });
     }
@@ -965,9 +965,9 @@ text=Response B
             .satisfies(|e| {
                 assert_matches!(e,
                     error::InvalidPropertyValue { etype, value, field }
-                    if *etype == "Dialogue" &&
-                        value == "fake:item_a"
-                        && *field == "requirement"
+                    if *etype == "Dialogue".into() &&
+                        *value == "fake:item_a".into()
+                        && *field == "requirement".into()
                 );
                 true
             });
@@ -1019,7 +1019,7 @@ text=Response B
     |e: &error::Application| {
         assert_matches!(
             e,
-            error::DefaultEntityNotFound { etype, id } if *etype == "Dialogue default " && id == "dialogue_a"
+            error::DefaultEntityNotFound { etype, id } if *etype == "Dialogue default".into() && *id == "dialogue_a".into()
         );
         true
     }
@@ -1046,7 +1046,7 @@ text=Response B
         assert_matches!(
             e,
             error::EntityVariantNotFound { etype, id, variant }
-            if *etype == "Room" && id == "Room A" && variant == "nonexistent_variant"
+            if *etype == "Room".into() && *id == "Room A".into() && *variant == "nonexistent_variant".into()
         );
         true
     }
@@ -1067,7 +1067,7 @@ text=Response B
     |e: &error::Application| {
         assert_matches!(
             e,
-            error::EntityNotFound { etype, id } if *etype == "Dialogue" && id == "dialogue_b"
+            error::EntityNotFound { etype, id } if *etype == "Dialogue".into() && *id == "dialogue_b".into()
         );
         true
     }

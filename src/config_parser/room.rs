@@ -6,7 +6,7 @@ use crate::{
     error,
 };
 
-use super::iter::{EntitySection, SectionRecordIter};
+use super::iter::{EntitySection, IterRequireWith, ParseWith, SectionRecordIter};
 
 pub fn parse_rooms<'a>(ini_iter: SectionIter<'a>) -> Result<Vec<RoomRaw>, error::Application> {
     let mut list = Vec::new();
@@ -18,33 +18,13 @@ pub fn parse_rooms<'a>(ini_iter: SectionIter<'a>) -> Result<Vec<RoomRaw>, error:
             .map(|exit| {
                 let mut parts = exit.split(":");
                 let direction = parts
-                    .next()
-                    .ok_or_else(|| error::PropertyNotFound {
-                        etype: "Room",
-                        property: "exit:<direction>",
-                        id: record.qualified_name().into(),
-                    })?
+                    .require_next(&record, "exit=<direction>")?
                     .trim()
-                    .parse::<Identifier>()
-                    .map_err(|source| error::ConversionFailed {
-                        etype: "Room",
-                        property: "exit:<direction>",
-                        source,
-                    })?;
+                    .parse_with::<Identifier>(&record, "exit=<direction>")?;
                 let room = parts
-                    .next()
-                    .ok_or_else(|| error::PropertyNotFound {
-                        etype: "Room",
-                        property: "exit=direction:<room>",
-                        id: record.qualified_name().into(),
-                    })?
+                    .require_next(&record, "exit=direction:<room>")?
                     .trim()
-                    .parse::<Title>()
-                    .map_err(|source| error::ConversionFailed {
-                        etype: "Room",
-                        property: "exit=direction:<room>",
-                        source,
-                    })?;
+                    .parse_with::<Title>(&record, "exit=direction:<room>")?;
                 Ok((direction, room))
             })
             .collect::<Result<IndexMap<Identifier, Title>, error::Application>>()?;

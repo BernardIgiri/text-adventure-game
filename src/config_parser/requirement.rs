@@ -3,7 +3,7 @@ use crate::{
     error,
 };
 
-use super::iter::Record;
+use super::iter::{IterRequireWith, ParseWith, Record};
 
 pub fn parse_requirements(record: &Record) -> Result<Vec<RequirementRaw>, error::Application> {
     record
@@ -18,57 +18,29 @@ fn parse_one_requirement(
 ) -> Result<RequirementRaw, error::Application> {
     let mut parts = string.splitn(2, ':').map(str::trim);
     let r_type = parts
-        .next()
-        .ok_or_else(|| error::PropertyNotFound {
-            etype: record.entity_type(),
-            property: "requires:<requirement_type>",
-            id: record.qualified_name().into(),
-        })?
+        .require_next(record, "requires:<requirement_type>")?
         .to_lowercase();
     let requirement = match r_type.as_str() {
         "has_item" => {
-            let item = parts.next().ok_or_else(|| error::PropertyNotFound {
-                etype: record.entity_type(),
-                property: "requires:has_item:<item_id>",
-                id: record.qualified_name().into(),
-            })?;
-            let item: Identifier = item.parse().map_err(|source| error::ConversionFailed {
-                etype: record.entity_type(),
-                property: "requires:has_item:<item_id>",
-                source,
-            })?;
-
+            let item = parts.require_next(record, "requires:has_item:<item_id>")?;
+            let item: Identifier = item.parse_with(record, "requires:has_item:<item_id>")?;
             RequirementRaw::HasItem(item)
         }
         "does_not_have" => {
-            let item = parts.next().ok_or_else(|| error::PropertyNotFound {
-                etype: record.entity_type(),
-                property: "requires:does_not_have:<item_id>",
-                id: record.qualified_name().into(),
-            })?;
-            let item: Identifier = item.parse().map_err(|source| error::ConversionFailed {
-                etype: record.entity_type(),
-                property: "requires:does_not_have:<item_id>",
-                source,
-            })?;
-
+            let item = parts.require_next(record, "requires:does_not_have:<item_id>")?;
+            let item: Identifier = item.parse_with(record, "requires:does_not_have:<item_id>")?;
             RequirementRaw::DoesNotHave(item)
         }
         "room_variant" => {
-            let qualified_name = parts.next().ok_or_else(|| error::PropertyNotFound {
-                etype: record.entity_type(),
-                property: "requires:room_variant:<room>",
-                id: record.qualified_name().into(),
-            })?;
+            let qualified_name = parts.require_next(record, "requires:room_variant:<room>")?;
             let (room, variant) = record.parse_qualified_name(qualified_name)?;
-
             RequirementRaw::RoomVariant(room, variant)
         }
         _ => {
             return Err(error::InvalidPropertyValue {
-                etype: record.entity_type(),
+                etype: record.entity_type().into(),
                 value: string.into(),
-                field: "requirement",
+                field: "requirement".into(),
             });
         }
     };

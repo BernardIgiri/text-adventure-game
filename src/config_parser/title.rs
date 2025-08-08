@@ -11,7 +11,7 @@ use super::iter::{EntitySection, SectionRecordIter};
 pub fn parse_title(ini: &Ini) -> Result<GameTitleRaw, error::Application> {
     let properties = ini
         .section(None::<String>)
-        .ok_or(error::EntitySectionNotFound(""))?;
+        .ok_or_else(|| error::EntitySectionNotFound("".into()))?;
     let record = Record::from_root(
         properties,
         &["title", "greeting", "credits", "start_room"],

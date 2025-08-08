@@ -19,7 +19,8 @@ pub fn preprocess(input: &str) -> Result<String, error::Application> {
                 .into_iter()
                 .map(|i| i.to_string())
                 .collect::<Vec<_>>()
-                .join(", "),
+                .join(", ")
+                .into(),
         ));
     }
     let mut output = String::new();
@@ -59,13 +60,14 @@ pub fn preprocess(input: &str) -> Result<String, error::Application> {
 }
 
 pub fn preprocess_to_ini_from_file(file: &Path) -> Result<Ini, error::Application> {
-    let input = fs::read_to_string(file).map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
+    let input =
+        fs::read_to_string(file).map_err(|e| error::CouldNotLoadFile(e.to_string().into()))?;
     preprocess_to_ini(input.as_str())
 }
 
 pub fn preprocess_to_ini(input: &str) -> Result<Ini, error::Application> {
     let preprocessed = preprocess(input)?;
-    Ini::load_from_str(&preprocessed).map_err(|e| error::CouldNotLoadFile(e.to_string()))
+    Ini::load_from_str(&preprocessed).map_err(|e| error::CouldNotLoadFile(e.to_string().into()))
 }
 
 pub fn find_bad_quote_sequences_by_line(input: &str) -> Vec<usize> {

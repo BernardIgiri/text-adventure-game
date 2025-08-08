@@ -49,16 +49,16 @@ impl<'a> UnverifiedRecord<'a> {
         let section = section_parts
             .next()
             .ok_or_else(|| error::InvalidPropertyValue {
-                etype: "Unknown",
+                etype: "Unknown".into(),
                 value: input.into(),
-                field: "Section Name",
+                field: "Section Name".into(),
             })?
             .trim();
         let section =
             EntitySection::from_str(section).map_err(|_| error::InvalidPropertyValue {
-                etype: "Not Found",
+                etype: "Not Found".into(),
                 value: input.into(),
-                field: "Section Name",
+                field: "Section Name".into(),
             })?;
         let qualified_name = section_parts.next().unwrap_or_default().trim();
         let (name, variant) =
@@ -79,17 +79,17 @@ impl<'a> UnverifiedRecord<'a> {
         let name = parts
             .next()
             .ok_or_else(|| error::InvalidPropertyValue {
-                etype: section,
+                etype: section.into(),
                 value: qualified_name.into(),
-                field: "qualified name",
+                field: "qualified name".into(),
             })?
             .trim();
         let variant =
             match parts.next() {
                 Some(v) => Some(v.trim().parse::<Identifier>().map_err(|source| {
                     error::ConversionFailed {
-                        etype: section,
-                        property: "variant",
+                        etype: section.into(),
+                        property: "variant".into(),
                         source,
                     }
                 })?),
@@ -118,26 +118,18 @@ impl<'a> UnverifiedRecord<'a> {
         ) {
             (false, false) => Ok(Record(self)),
             (true, _) => {
-                #[allow(clippy::expect_used)]
-                let entity = EntitySection::from_str(self.section)
-                    .expect("Valid record sections should already be established by now!")
-                    .into();
                 let id = self.qualified_name.into();
                 Err(error::MissingProperties {
-                    missing: missing_keys.map(|s| s.to_string()).collect(),
-                    etype: entity,
+                    missing: missing_keys.map(|s| From::<&str>::from(s)).collect(),
+                    etype: self.section.into(),
                     id,
                 })
             }
             (_, true) => {
-                #[allow(clippy::expect_used)]
-                let entity = EntitySection::from_str(self.section)
-                    .expect("Valid record sections should already be established by now!")
-                    .into();
                 let id = self.qualified_name.into();
                 Err(error::UnexpectedProperties {
-                    unexpected: unexpected_keys.map(|s| s.to_string()).collect(),
-                    etype: entity,
+                    unexpected: unexpected_keys.map(|s| From::<&str>::from(s)).collect(),
+                    etype: self.section.into(),
                     id,
                 })
             }
@@ -162,8 +154,8 @@ impl<'a> Record<'a> {
             .name
             .parse()
             .map_err(|source| error::ConversionFailed {
-                etype: self.0.section,
-                property: "name",
+                etype: self.0.section.into(),
+                property: "name".into(),
                 source,
             })
     }
@@ -181,11 +173,8 @@ impl<'a> Record<'a> {
     }
     pub fn require(&self, prop: &'static str) -> Result<&str, error::Application> {
         self.get(prop).ok_or_else(|| error::PropertyNotFound {
-            #[allow(clippy::expect_used)]
-            etype: EntitySection::from_str(self.0.section)
-                .expect("Valid record sections should already be established by now!")
-                .into(),
-            property: prop,
+            etype: self.0.section.into(),
+            property: prop.into(),
             id: self.0.qualified_name.into(),
         })
     }
@@ -198,8 +187,8 @@ impl<'a> Record<'a> {
             |s| {
                 s.parse::<T>()
                     .map_err(|source| error::ConversionFailed {
-                        etype: self.0.section,
-                        property: "name",
+                        etype: self.0.section.into(),
+                        property: "name".into(),
                         source,
                     })
                     .map(|s| Some(s))
@@ -212,8 +201,8 @@ impl<'a> Record<'a> {
     {
         let s = self.require(prop)?;
         s.parse::<T>().map_err(|source| error::ConversionFailed {
-            etype: self.0.section,
-            property: "name",
+            etype: self.0.section.into(),
+            property: "name".into(),
             source,
         })
     }
@@ -235,8 +224,8 @@ impl<'a> Record<'a> {
     {
         self.get_list(prop).map(|s| {
             s.parse::<T>().map_err(|source| error::ConversionFailed {
-                etype: self.0.section,
-                property: "name",
+                etype: self.0.section.into(),
+                property: "name".into(),
                 source,
             })
         })
@@ -261,8 +250,8 @@ impl<'a> Record<'a> {
         Ok((
             name.parse::<Title>()
                 .map_err(|source| error::ConversionFailed {
-                    etype: self.0.section,
-                    property: "name",
+                    etype: self.0.section.into(),
+                    property: "name".into(),
                     source,
                 })?,
             variant,
@@ -302,6 +291,64 @@ impl<'a> Iterator for SectionRecordIter<'a> {
             }
         }
         None
+    }
+}
+
+pub trait IterRequireWith {
+    type Item;
+
+    fn require_next(
+        &mut self,
+        record: &Record<'_>,
+        property_description: impl Into<Box<str>>,
+    ) -> Result<Self::Item, error::Application>;
+}
+
+impl<I> IterRequireWith for I
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn require_next(
+        &mut self,
+        record: &Record<'_>,
+        property_description: impl Into<Box<str>>,
+    ) -> Result<Self::Item, error::Application> {
+        self.next().ok_or_else(|| error::PropertyNotFound {
+            etype: record.entity_type().into(),
+            property: property_description.into(),
+            id: record.qualified_name().into(),
+        })
+    }
+}
+
+pub trait ParseWith {
+    fn parse_with<'b, T>(
+        &self,
+        record: &Record<'b>,
+        property_description: impl Into<Box<str>>,
+    ) -> Result<T, error::Application>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: Into<IllegalConversion>;
+}
+
+impl ParseWith for &str {
+    fn parse_with<'b, T>(
+        &self,
+        record: &Record<'b>,
+        property_description: impl Into<Box<str>>,
+    ) -> Result<T, error::Application>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: Into<IllegalConversion>,
+    {
+        self.parse::<T>().map_err(|source| error::ConversionFailed {
+            etype: record.entity_type().into(),
+            property: property_description.into(),
+            source: source.into(),
+        })
     }
 }
 
@@ -360,9 +407,9 @@ mod tests {
                 id,
                 etype: entity,
             } => {
-                assert_eq!(property, "description");
-                assert_eq!(id, "ring");
-                assert_eq!(entity, "Item");
+                assert_eq!(property, "description".into());
+                assert_eq!(id, "ring".into());
+                assert_eq!(entity, "Item".into());
             }
             _ => panic!("Expected PropertyNotFound"),
         }
@@ -401,9 +448,9 @@ mod tests {
                 etype: entity,
                 id,
             } => {
-                assert_eq!(missing, vec!["description".to_string()]);
-                assert_eq!(entity, "Item");
-                assert_eq!(id, "ring");
+                assert_eq!(missing, vec!["description".into()]);
+                assert_eq!(entity, "Item".into());
+                assert_eq!(id, "ring".into());
             }
             _ => panic!("Expected PropertyNamesDontMatch"),
         }
@@ -426,9 +473,9 @@ mod tests {
                 etype: entity,
                 id,
             } => {
-                assert_eq!(unexpected, vec!["color".to_string()]);
-                assert_eq!(entity, "Item");
-                assert_eq!(id, "ring");
+                assert_eq!(unexpected, vec!["color".into()]);
+                assert_eq!(entity, "Item".into());
+                assert_eq!(id, "ring".into());
             }
             _ => panic!("Expected PropertyNamesDontMatch"),
         }

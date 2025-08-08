@@ -41,7 +41,7 @@ fn play() -> Result<(), error::Application> {
     let args = Args::parse();
     info!("Loading data...");
     let ini = preprocess_to_ini_from_file(args.file.as_path())
-        .map_err(|e| error::CouldNotLoadFile(e.to_string()))?;
+        .map_err(|e| error::CouldNotLoadFile(e.to_string().into()))?;
     let mut state = GameState::from_ini(ini)?;
     let mut ui = UI::new(state.theme(), state.language());
     let mut player = Player::Idle;
